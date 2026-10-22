@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="lp-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e4e7eb"/>
+    </linearGradient>
+    <linearGradient id="pill-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d2d5dc"/>
+      <stop offset="100%" stop-color="#c4c8d0"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect x="8" y="8" width="112" height="112" fill="url(#lp-bg)"/>
+    
+    <!-- Top search pill -->
+    <rect x="28" y="28" width="72" height="18" rx="9" ry="9" fill="url(#pill-grad)"/>
+    <!-- Magnifier icon in pill -->
+    <circle cx="38" cy="37" r="3.5" fill="none" stroke="#6e737e" stroke-width="1.8"/>
+    <line x1="41" y1="40" x2="44.5" y2="43.5" stroke="#6e737e" stroke-width="1.8" stroke-linecap="round"/>
+    
+    <!-- 6 App Grid Dots -->
+    <!-- Top row -->
+    <rect x="31" y="58" width="16" height="16" rx="4.5" fill="#ff9500"/>
+    <rect x="56" y="58" width="16" height="16" rx="4.5" fill="#ff2d55"/>
+    <rect x="81" y="58" width="16" height="16" rx="4.5" fill="#007aff"/>
+    
+    <!-- Bottom row -->
+    <rect x="31" y="82" width="16" height="16" rx="4.5" fill="#af52de"/>
+    <rect x="56" y="82" width="16" height="16" rx="4.5" fill="#5ac8fa"/>
+    <rect x="81" y="82" width="16" height="16" rx="4.5" fill="#34c759"/>
+
+    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1"/>
+  </g>
+</svg>

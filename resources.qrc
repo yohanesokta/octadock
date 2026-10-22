@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/DockContainer.qml</file>
+        <file>qml/DockIcon.qml</file>
+        <file>qml/DockTooltip.qml</file>
+        <file>qml/ContextMenu.qml</file>
+        <file>qml/SettingsDialog.qml</file>
+        <file>assets/icons/finder.svg</file>
+        <file>assets/icons/launchpad.svg</file>
+        <file>assets/icons/safari.svg</file>
+        <file>assets/icons/mail.svg</file>
+        <file>assets/icons/facetime.svg</file>
+        <file>assets/icons/messages.svg</file>
+        <file>assets/icons/maps.svg</file>
+        <file>assets/icons/photos.svg</file>
+        <file>assets/icons/contacts.svg</file>
+        <file>assets/icons/settings.svg</file>
+    </qresource>
+</RCC>

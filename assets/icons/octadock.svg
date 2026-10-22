@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="app-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a3848"/>
+      <stop offset="100%" stop-color="#141c24"/>
+    </linearGradient>
+    <linearGradient id="dock-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.15"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect x="8" y="8" width="112" height="112" fill="url(#app-bg)"/>
+    
+    <!-- Floating mini dock inside icon -->
+    <rect x="18" y="74" width="92" height="36" rx="10" ry="10" fill="url(#dock-glass)" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.6"/>
+    
+    <!-- Mini icons on the dock -->
+    <!-- Finder -->
+    <rect x="25" y="80" width="14" height="14" rx="3.5" fill="#3297ec"/>
+    <!-- Safari -->
+    <circle cx="50" cy="87" r="7" fill="#0d72eb"/>
+    <!-- FaceTime -->
+    <rect x="64" y="80" width="14" height="14" rx="3.5" fill="#34c759"/>
+    <!-- Photos -->
+    <rect x="83" y="80" width="14" height="14" rx="3.5" fill="#ffffff"/>
+    <circle cx="90" cy="87" r="4" fill="#ff9500"/>
+    
+    <!-- Active running dot -->
+    <circle cx="32" cy="104" r="1.5" fill="#ffffff" opacity="0.8"/>
+    
+    <!-- Inner border -->
+    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1"/>
+  </g>
+</svg>

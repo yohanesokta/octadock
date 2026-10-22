@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="mail-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1888fb"/>
+      <stop offset="100%" stop-color="#0055d4"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
+    </clipPath>
+    <filter id="env-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect x="8" y="8" width="112" height="112" fill="url(#mail-bg)"/>
+    
+    <!-- White Envelope -->
+    <g filter="url(#env-shadow)">
+      <rect x="22" y="37" width="84" height="54" rx="6" fill="#f8fafc"/>
+      <!-- Envelope fold lines -->
+      <path d="M 23 38 L 64 69 L 105 38" fill="none" stroke="#d0d6e2" stroke-width="2" stroke-linejoin="round"/>
+      <!-- Bottom flaps -->
+      <path d="M 23 90 L 52 64" fill="none" stroke="#e2e6ee" stroke-width="1.8"/>
+      <path d="M 105 90 L 76 64" fill="none" stroke="#e2e6ee" stroke-width="1.8"/>
+    </g>
+    
+    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
+  </g>
+</svg>

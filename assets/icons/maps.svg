@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
+    </clipPath>
+    <filter id="badge-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <!-- Map background (beige landscape) -->
+    <rect x="8" y="8" width="112" height="112" fill="#f5eedc"/>
+    <!-- Green park area -->
+    <path d="M 8 8 L 8 68 C 22 74 38 62 55 52 C 72 42 78 20 78 8 Z" fill="#a2db8f"/>
+    <path d="M 68 120 C 72 105 84 94 98 88 L 120 86 L 120 120 Z" fill="#bee7b0"/>
+    
+    <!-- Roads -->
+    <!-- Secondary road -->
+    <path d="M 8 82 Q 58 72 120 54" fill="none" stroke="#ffffff" stroke-width="14"/>
+    <path d="M 8 82 Q 58 72 120 54" fill="none" stroke="#e5dac8" stroke-width="11"/>
+    
+    <!-- Highway (yellow/gold) -->
+    <path d="M 26 120 Q 50 64 120 22" fill="none" stroke="#ffffff" stroke-width="18"/>
+    <path d="M 26 120 Q 50 64 120 22" fill="none" stroke="#fed043" stroke-width="13"/>
+    
+    <!-- Central Location Arrow Badge -->
+    <g filter="url(#badge-shadow)" transform="translate(62,64)">
+      <circle cx="0" cy="0" r="20" fill="#ffffff"/>
+      <!-- Blue navigation arrow -->
+      <polygon points="0,-12 10,10 0,6 -10,10" fill="#007aff"/>
+    </g>
+    
+    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="1"/>
+  </g>
+</svg>
