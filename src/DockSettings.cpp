@@ -8,11 +8,20 @@ DockSettings::DockSettings(QObject *parent)
     load();
 }
 
+void DockSettings::recalculateDockHeight() {
+    int target = m_iconSize + 2 * m_verticalPadding + 2;
+    if (m_dockHeight != target) {
+        m_dockHeight = target;
+        emit dockHeightChanged(m_dockHeight);
+    }
+}
+
 void DockSettings::setIconSize(int size) {
     size = qBound(32, size, 140);
     if (m_iconSize != size) {
         m_iconSize = size;
         emit iconSizeChanged(m_iconSize);
+        recalculateDockHeight();
         save();
     }
 }
@@ -22,6 +31,25 @@ void DockSettings::setIconSpacing(int spacing) {
     if (m_iconSpacing != spacing) {
         m_iconSpacing = spacing;
         emit iconSpacingChanged(m_iconSpacing);
+        save();
+    }
+}
+
+void DockSettings::setVerticalPadding(int padding) {
+    padding = qBound(4, padding, 30);
+    if (m_verticalPadding != padding) {
+        m_verticalPadding = padding;
+        emit verticalPaddingChanged(m_verticalPadding);
+        recalculateDockHeight();
+        save();
+    }
+}
+
+void DockSettings::setHorizontalPadding(int padding) {
+    padding = qBound(6, padding, 50);
+    if (m_horizontalPadding != padding) {
+        m_horizontalPadding = padding;
+        emit horizontalPaddingChanged(m_horizontalPadding);
         save();
     }
 }
@@ -49,6 +77,15 @@ void DockSettings::setCornerRadius(int radius) {
     if (m_cornerRadius != radius) {
         m_cornerRadius = radius;
         emit cornerRadiusChanged(m_cornerRadius);
+        save();
+    }
+}
+
+void DockSettings::setIconCornerRadiusRatio(qreal ratio) {
+    ratio = qBound(0.1, ratio, 0.45);
+    if (!qFuzzyCompare(m_iconCornerRadiusRatio, ratio)) {
+        m_iconCornerRadiusRatio = ratio;
+        emit iconCornerRadiusRatioChanged(m_iconCornerRadiusRatio);
         save();
     }
 }
@@ -84,6 +121,15 @@ void DockSettings::setBackgroundTint(const QString &tint) {
     if (m_backgroundTint != tint) {
         m_backgroundTint = tint;
         emit backgroundTintChanged(m_backgroundTint);
+        save();
+    }
+}
+
+void DockSettings::setBorderOpacity(qreal opacity) {
+    opacity = qBound(0.05, opacity, 1.0);
+    if (!qFuzzyCompare(m_borderOpacity, opacity)) {
+        m_borderOpacity = opacity;
+        emit borderOpacityChanged(m_borderOpacity);
         save();
     }
 }
@@ -131,15 +177,19 @@ void DockSettings::setQpaPlatform(const QString &platform) {
 
 void DockSettings::load() {
     QSettings s("OctaDock", "OctaDock");
-    m_iconSize = s.value("dock/iconSize", 64).toInt();
-    m_iconSpacing = s.value("dock/iconSpacing", 14).toInt();
-    m_dockHeight = s.value("dock/dockHeight", 92).toInt();
-    m_bottomMargin = s.value("dock/bottomMargin", 11).toInt();
-    m_cornerRadius = s.value("dock/cornerRadius", 28).toInt();
-    m_magnificationFactor = s.value("dock/magnificationFactor", 1.36).toReal();
+    m_iconSize = s.value("dock/iconSize", 58).toInt();
+    m_iconSpacing = s.value("dock/iconSpacing", 18).toInt();
+    m_verticalPadding = s.value("dock/verticalPadding", 12).toInt();
+    m_horizontalPadding = s.value("dock/horizontalPadding", 22).toInt();
+    m_dockHeight = s.value("dock/dockHeight", 84).toInt();
+    m_bottomMargin = s.value("dock/bottomMargin", 6).toInt();
+    m_cornerRadius = s.value("dock/cornerRadius", 24).toInt();
+    m_iconCornerRadiusRatio = s.value("dock/iconCornerRadiusRatio", 0.225).toReal();
+    m_magnificationFactor = s.value("dock/magnificationFactor", 1.35).toReal();
     m_magnificationRange = s.value("dock/magnificationRange", 2.0).toReal();
-    m_backgroundOpacity = s.value("dock/backgroundOpacity", 0.25).toReal();
-    m_backgroundTint = s.value("dock/backgroundTint", "#3a526d").toString();
+    m_backgroundOpacity = s.value("dock/backgroundOpacity", 0.28).toReal();
+    m_backgroundTint = s.value("dock/backgroundTint", "#dbe5f0").toString();
+    m_borderOpacity = s.value("dock/borderOpacity", 0.32).toReal();
     m_autoHide = s.value("dock/autoHide", false).toBool();
     m_autoHideDelay = s.value("dock/autoHideDelay", 500).toInt();
     m_showRunningIndicators = s.value("dock/showRunningIndicators", true).toBool();
@@ -151,13 +201,17 @@ void DockSettings::save() {
     QSettings s("OctaDock", "OctaDock");
     s.setValue("dock/iconSize", m_iconSize);
     s.setValue("dock/iconSpacing", m_iconSpacing);
+    s.setValue("dock/verticalPadding", m_verticalPadding);
+    s.setValue("dock/horizontalPadding", m_horizontalPadding);
     s.setValue("dock/dockHeight", m_dockHeight);
     s.setValue("dock/bottomMargin", m_bottomMargin);
     s.setValue("dock/cornerRadius", m_cornerRadius);
+    s.setValue("dock/iconCornerRadiusRatio", m_iconCornerRadiusRatio);
     s.setValue("dock/magnificationFactor", m_magnificationFactor);
     s.setValue("dock/magnificationRange", m_magnificationRange);
     s.setValue("dock/backgroundOpacity", m_backgroundOpacity);
     s.setValue("dock/backgroundTint", m_backgroundTint);
+    s.setValue("dock/borderOpacity", m_borderOpacity);
     s.setValue("dock/autoHide", m_autoHide);
     s.setValue("dock/autoHideDelay", m_autoHideDelay);
     s.setValue("dock/showRunningIndicators", m_showRunningIndicators);
@@ -166,19 +220,43 @@ void DockSettings::save() {
 }
 
 void DockSettings::resetToDefaults() {
-    setIconSize(64);
-    setIconSpacing(14);
-    setDockHeight(92);
-    setBottomMargin(11);
-    setCornerRadius(28);
-    setMagnificationFactor(1.36);
-    setMagnificationRange(2.0);
-    setBackgroundOpacity(0.25);
-    setBackgroundTint("#3a526d");
-    setAutoHide(false);
-    setAutoHideDelay(500);
-    setShowRunningIndicators(true);
-    setEnableMagnification(true);
-    setQpaPlatform("xcb");
+    m_iconSize = 58;
+    m_iconSpacing = 18;
+    m_verticalPadding = 12;
+    m_horizontalPadding = 22;
+    m_dockHeight = 84;
+    m_bottomMargin = 6;
+    m_cornerRadius = 24;
+    m_iconCornerRadiusRatio = 0.225;
+    m_magnificationFactor = 1.35;
+    m_magnificationRange = 2.0;
+    m_backgroundOpacity = 0.28;
+    m_backgroundTint = "#dbe5f0";
+    m_borderOpacity = 0.32;
+    m_autoHide = false;
+    m_autoHideDelay = 500;
+    m_showRunningIndicators = true;
+    m_enableMagnification = true;
+    m_qpaPlatform = "xcb";
+
+    emit iconSizeChanged(m_iconSize);
+    emit iconSpacingChanged(m_iconSpacing);
+    emit verticalPaddingChanged(m_verticalPadding);
+    emit horizontalPaddingChanged(m_horizontalPadding);
+    emit dockHeightChanged(m_dockHeight);
+    emit bottomMarginChanged(m_bottomMargin);
+    emit cornerRadiusChanged(m_cornerRadius);
+    emit iconCornerRadiusRatioChanged(m_iconCornerRadiusRatio);
+    emit magnificationFactorChanged(m_magnificationFactor);
+    emit magnificationRangeChanged(m_magnificationRange);
+    emit backgroundOpacityChanged(m_backgroundOpacity);
+    emit backgroundTintChanged(m_backgroundTint);
+    emit borderOpacityChanged(m_borderOpacity);
+    emit autoHideChanged(m_autoHide);
+    emit autoHideDelayChanged(m_autoHideDelay);
+    emit showRunningIndicatorsChanged(m_showRunningIndicators);
+    emit enableMagnificationChanged(m_enableMagnification);
+    emit qpaPlatformChanged(m_qpaPlatform);
+
     save();
 }

@@ -43,6 +43,7 @@ target_link_libraries(octadock PRIVATE
     Qt6::Svg
     Qt6::Widgets
     Qt6::DBus
+    xcb
 )
 
 qt_finalize_executable(octadock)

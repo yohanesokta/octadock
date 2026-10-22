@@ -3,54 +3,58 @@ import QtQuick
 Item {
     id: root
 
-    property real baseIconSize: dockSettings ? dockSettings.iconSize : 64
-    property real iconSpacing: dockSettings ? dockSettings.iconSpacing : 14
-    property real dockHeight: dockSettings ? dockSettings.dockHeight : 92
-    property real cornerRadius: dockSettings ? dockSettings.cornerRadius : 28
-    property real bgOpacity: dockSettings ? dockSettings.backgroundOpacity : 0.25
+    property real baseIconSize: dockSettings ? dockSettings.iconSize : 58
+    property real iconSpacing: dockSettings ? dockSettings.iconSpacing : 18
+    property real verticalPadding: dockSettings ? dockSettings.verticalPadding : 12
+    property real horizontalPadding: dockSettings ? dockSettings.horizontalPadding : 22
+    property real dockHeight: dockSettings ? dockSettings.dockHeight : 84
+    property real cornerRadius: dockSettings ? dockSettings.cornerRadius : 24
+    property real bgOpacity: dockSettings ? dockSettings.backgroundOpacity : 0.28
+    property real borderOpacity: dockSettings ? dockSettings.borderOpacity : 0.32
 
-    // Dynamic width based on icons + horizontal padding
     property real totalIconsWidth: iconsRow.width
-    property real horizontalPadding: 24
+    property bool mouseInside: dockMouseArea.containsMouse
 
+    // Total width adapts to icons + horizontal padding
     width: Math.max(120, totalIconsWidth + horizontalPadding * 2)
-    height: dockHeight + 30 // extra vertical headroom for magnified icons and shadows
+    // Headroom for magnified icons expanding upwards
+    height: dockHeight + 36
 
-    // Floating capsule container
+    // Floating Glass Capsule Container
     Rectangle {
         id: dockGlass
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 10
+        anchors.bottomMargin: 0
         anchors.horizontalCenter: parent.horizontalCenter
-        width: root.totalIconsWidth + root.horizontalPadding * 2
+        width: parent.width
         height: root.dockHeight
         radius: root.cornerRadius
 
-        // Soft frosted glass translucent tint matching reference
-        color: Qt.rgba(0.84, 0.90, 0.96, root.bgOpacity)
-        border.color: Qt.rgba(1.0, 1.0, 1.0, 0.42)
-        border.width: 1.2
+        // Frosted glass cool blue-gray translucent tint matching reference
+        color: Qt.rgba(0.86, 0.91, 0.97, root.bgOpacity)
+        border.color: Qt.rgba(1.0, 1.0, 1.0, root.borderOpacity)
+        border.width: 1.0
 
-        // Soft ambient drop shadows beneath the dock
+        // Soft restrained outer drop shadows (dual layer for smooth ambient falloff)
         Rectangle {
             anchors.fill: parent
-            anchors.topMargin: 6
-            anchors.bottomMargin: -10
-            anchors.leftMargin: -8
-            anchors.rightMargin: -8
-            radius: root.cornerRadius + 8
-            color: "#22000000"
+            anchors.topMargin: 3
+            anchors.bottomMargin: -5
+            anchors.leftMargin: -4
+            anchors.rightMargin: -4
+            radius: root.cornerRadius + 4
+            color: "#18000000"
             z: -2
         }
 
         Rectangle {
             anchors.fill: parent
-            anchors.topMargin: 3
-            anchors.bottomMargin: -5
-            anchors.leftMargin: -3
-            anchors.rightMargin: -3
-            radius: root.cornerRadius + 4
-            color: "#38000000"
+            anchors.topMargin: 1
+            anchors.bottomMargin: -2
+            anchors.leftMargin: -1
+            anchors.rightMargin: -1
+            radius: root.cornerRadius + 2
+            color: "#24000000"
             z: -1
         }
 
@@ -63,15 +67,13 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: root.cornerRadius
             height: 1
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.45)
+            color: Qt.rgba(1.0, 1.0, 1.0, 0.40)
         }
 
-        // Icon Row Container
+        // Icon Row: precisely centered vertically within the dock glass
         Row {
             id: iconsRow
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 4
-            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.centerIn: parent
             spacing: root.iconSpacing
 
             Repeater {
@@ -91,8 +93,10 @@ Item {
                     }
 
                     onRightClicked: function(mx, my) {
-                        var pt = iconItem.mapToItem(root.parent, mx, my)
-                        contextMenu.showAt(pt.x, pt.y, index, model.name, model.itemId, model.execCommand)
+                        if (typeof dockWindow !== "undefined" && dockWindow) {
+                            var pt = iconItem.mapToGlobal(iconItem.width / 2, 0)
+                            dockWindow.showContextMenu(index, model.name, model.itemId, model.execCommand, Math.round(pt.x), Math.round(pt.y))
+                        }
                     }
                 }
             }
@@ -102,12 +106,11 @@ Item {
         MouseArea {
             id: dockMouseArea
             anchors.fill: parent
-            anchors.topMargin: -30 // allow hovering slightly above dock
+            anchors.topMargin: -36 // allow pointer hover slightly above dock
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
             property real hoveredDockX: -1
-            property bool isMouseOver: containsMouse
 
             onPositionChanged: function(mouse) {
                 hoveredDockX = mouse.x
@@ -120,7 +123,6 @@ Item {
             }
 
             onClicked: function(mouse) {
-                // Find clicked icon
                 var iconFound = false
                 for (var i = 0; i < iconRepeater.count; ++i) {
                     var item = iconRepeater.itemAt(i)
@@ -129,8 +131,10 @@ Item {
                         if (pt.x >= 0 && pt.x <= item.width && pt.y >= 0 && pt.y <= item.height) {
                             iconFound = true
                             if (mouse.button === Qt.RightButton) {
-                                var globalPt = item.mapToItem(root.parent, pt.x, pt.y)
-                                contextMenu.showAt(globalPt.x, globalPt.y, i, item.name, item.itemId, "")
+                                if (typeof dockWindow !== "undefined" && dockWindow) {
+                                    var pt = item.mapToGlobal(item.width / 2, 0)
+                                    dockWindow.showContextMenu(i, item.name, item.itemId, "", Math.round(pt.x), Math.round(pt.y))
+                                }
                             } else {
                                 dockModel.launch(i)
                             }
@@ -140,8 +144,10 @@ Item {
                 }
 
                 if (!iconFound && mouse.button === Qt.RightButton) {
-                    var globalPt = dockGlass.mapToItem(root.parent, mouse.x, mouse.y)
-                    contextMenu.showAt(globalPt.x, globalPt.y, -1, "", "", "")
+                    if (typeof dockWindow !== "undefined" && dockWindow) {
+                        var pt = dockGlass.mapToGlobal(mouse.x, 0)
+                        dockWindow.showContextMenu(-1, "", "", "", Math.round(pt.x), Math.round(pt.y))
+                    }
                 }
             }
         }
@@ -166,14 +172,12 @@ Item {
 
             if (dist < radius) {
                 var normDist = dist / radius
-                // Smooth cosine wave
                 var wave = 0.5 * (1.0 + Math.cos(Math.PI * normDist))
                 item.targetScale = 1.0 + (maxFactor - 1.0) * wave
             } else {
                 item.targetScale = 1.0
             }
 
-            // Directly hovered icon check
             var pt = item.mapFromItem(dockGlass, mouseX, mouseY)
             item.isDirectlyHovered = (pt.x >= 0 && pt.x <= item.width && pt.y >= 0 && pt.y <= item.height)
         }

@@ -2,6 +2,42 @@
 #include <QGuiApplication>
 #include <QDebug>
 #include <QProcess>
+#include <QtGui/qguiapplication_platform.h>
+#include <xcb/xcb.h>
+#include <cmath>
+#include <algorithm>
+
+static xcb_connection_t* getNativeXcbConnection() {
+    auto *x11App = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (x11App) {
+        return x11App->connection();
+    }
+    return nullptr;
+}
+
+static void setXcbAtomProperty(xcb_connection_t *conn, xcb_window_t win, const char *propName, const char *typeAtom, const QVector<uint32_t> &data) {
+    if (!conn) return;
+
+    xcb_intern_atom_cookie_t propCookie = xcb_intern_atom(conn, 0, strlen(propName), propName);
+    xcb_intern_atom_reply_t *propReply = xcb_intern_atom_reply(conn, propCookie, nullptr);
+    if (!propReply) return;
+
+    xcb_atom_t type = XCB_ATOM_CARDINAL;
+    if (strcmp(typeAtom, "ATOM") == 0) {
+        type = XCB_ATOM_ATOM;
+    }
+
+    xcb_change_property(conn,
+                        XCB_PROP_MODE_REPLACE,
+                        win,
+                        propReply->atom,
+                        type,
+                        32,
+                        data.size(),
+                        data.constData());
+
+    free(propReply);
+}
 
 PlatformIntegration::PlatformIntegration(DockSettings *settings, QObject *parent)
     : QObject(parent)
@@ -50,13 +86,9 @@ bool PlatformIntegration::isKDE() const {
 void PlatformIntegration::setupWindow(QWindow *window) {
     if (!window) return;
 
-    // Window flags for dock behavior
-    Qt::WindowFlags flags = Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool;
+    // Use frameless stay-on-top window without Qt::Tool to avoid transient-for nesting
+    Qt::WindowFlags flags = Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint;
     window->setFlags(flags);
-
-    // Make window bypass taskbar and window switcher where supported
-    window->setProperty("_NET_WM_WINDOW_TYPE", "_NET_WM_WINDOW_TYPE_DOCK");
-    window->setProperty("_NET_WM_STATE", "_NET_WM_STATE_SKIP_TASKBAR");
 
     if (isX11()) {
         applyX11Properties(window);
@@ -71,25 +103,111 @@ void PlatformIntegration::repositionWindow(QWindow *window, int dockWidth, int d
     if (!window || !m_currentScreen) return;
 
     QRect screenGeo = m_currentScreen->geometry();
-    int margin = m_settings ? m_settings->bottomMargin() : 11;
+    int margin = m_settings ? m_settings->bottomMargin() : 6;
 
     int x = screenGeo.x() + (screenGeo.width() - dockWidth) / 2;
     int y = screenGeo.y() + screenGeo.height() - dockHeight - margin;
 
     window->setGeometry(x, y, dockWidth, dockHeight);
+
+    // Update blur region to match current dock window size
+    setWindowBlur(window, true);
 }
 
 void PlatformIntegration::setWindowBlur(QWindow *window, bool enable) {
     if (!window) return;
 
-    // Request KWin blur behind region
-    if (isKDE()) {
-        window->setProperty("_KDE_NET_WM_BLUR_BEHIND_REGION", enable ? 1 : 0);
+    WId winId = window->winId();
+    if (!winId) return;
+
+    xcb_connection_t *conn = getNativeXcbConnection();
+    if (!conn) return;
+
+    if (enable) {
+        int glassHeight = m_settings ? m_settings->dockHeight() : 84;
+        int cornerRadius = m_settings ? m_settings->cornerRadius() : 24;
+        int winW = window->width();
+        int winH = window->height();
+        int yOffset = winH - glassHeight;
+        if (yOffset < 0) yOffset = 0;
+        if (cornerRadius > glassHeight / 2) cornerRadius = glassHeight / 2;
+
+        QVector<uint32_t> rectData;
+
+        // Central horizontal body of the dock glass
+        int bodyY = yOffset + cornerRadius;
+        int bodyH = glassHeight - 2 * cornerRadius;
+        if (bodyH > 0 && winW > 0) {
+            rectData << 0 << static_cast<uint32_t>(bodyY) << static_cast<uint32_t>(winW) << static_cast<uint32_t>(bodyH);
+        }
+
+        // Top and bottom rounded slices to form a perfect squircle/capsule blur matching dockGlass
+        for (int dy = 0; dy < cornerRadius; ++dy) {
+            double dyFromCenter = cornerRadius - dy;
+            int dx = static_cast<int>(std::round(cornerRadius - std::sqrt(std::max(0.0, static_cast<double>(cornerRadius * cornerRadius) - dyFromCenter * dyFromCenter))));
+            uint32_t sliceW = winW > 2 * dx ? static_cast<uint32_t>(winW - 2 * dx) : 0;
+            if (sliceW > 0) {
+                // Top rounded slice (starts at yOffset + dy)
+                rectData << static_cast<uint32_t>(dx) << static_cast<uint32_t>(yOffset + dy) << sliceW << 1;
+                // Bottom rounded slice (ends at yOffset + glassHeight - 1 - dy)
+                rectData << static_cast<uint32_t>(dx) << static_cast<uint32_t>(yOffset + glassHeight - 1 - dy) << sliceW << 1;
+            }
+        }
+
+        if (rectData.isEmpty()) {
+            rectData << 0 << static_cast<uint32_t>(yOffset) << static_cast<uint32_t>(winW) << static_cast<uint32_t>(glassHeight);
+        }
+
+        setXcbAtomProperty(conn, winId, "_KDE_NET_WM_BLUR_BEHIND_REGION", "CARDINAL", rectData);
+        setXcbAtomProperty(conn, winId, "_KDE_NET_WM_BACKGROUND_CONTRAST_REGION", "CARDINAL", rectData);
+    } else {
+        xcb_intern_atom_cookie_t cookie = xcb_intern_atom(conn, 0, strlen("_KDE_NET_WM_BLUR_BEHIND_REGION"), "_KDE_NET_WM_BLUR_BEHIND_REGION");
+        xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, nullptr);
+        if (reply) {
+            xcb_delete_property(conn, winId, reply->atom);
+            free(reply);
+        }
     }
+
+    xcb_flush(conn);
 }
 
 void PlatformIntegration::applyX11Properties(QWindow *window) {
-    Q_UNUSED(window);
+    if (!window) return;
+    WId winId = window->winId();
+    if (!winId) return;
+
+    xcb_connection_t *conn = getNativeXcbConnection();
+    if (!conn) return;
+
+    // Set _NET_WM_WINDOW_TYPE to _NET_WM_WINDOW_TYPE_DOCK
+    xcb_intern_atom_cookie_t dockCookie = xcb_intern_atom(conn, 0, strlen("_NET_WM_WINDOW_TYPE_DOCK"), "_NET_WM_WINDOW_TYPE_DOCK");
+    xcb_intern_atom_reply_t *dockReply = xcb_intern_atom_reply(conn, dockCookie, nullptr);
+    if (dockReply) {
+        setXcbAtomProperty(conn, winId, "_NET_WM_WINDOW_TYPE", "ATOM", {dockReply->atom});
+        free(dockReply);
+    }
+
+    // Set _NET_WM_STATE to SKIP_TASKBAR, SKIP_PAGER, ABOVE
+    const char *stateNames[] = {
+        "_NET_WM_STATE_SKIP_TASKBAR",
+        "_NET_WM_STATE_SKIP_PAGER",
+        "_NET_WM_STATE_ABOVE"
+    };
+    QVector<uint32_t> stateAtoms;
+    for (const char *name : stateNames) {
+        xcb_intern_atom_cookie_t c = xcb_intern_atom(conn, 0, strlen(name), name);
+        xcb_intern_atom_reply_t *r = xcb_intern_atom_reply(conn, c, nullptr);
+        if (r) {
+            stateAtoms.append(r->atom);
+            free(r);
+        }
+    }
+    if (!stateAtoms.isEmpty()) {
+        setXcbAtomProperty(conn, winId, "_NET_WM_STATE", "ATOM", stateAtoms);
+    }
+
+    xcb_flush(conn);
 }
 
 void PlatformIntegration::applyWaylandProperties(QWindow *window) {

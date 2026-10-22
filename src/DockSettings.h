@@ -9,13 +9,17 @@ class DockSettings : public QObject {
 
     Q_PROPERTY(int iconSize READ iconSize WRITE setIconSize NOTIFY iconSizeChanged)
     Q_PROPERTY(int iconSpacing READ iconSpacing WRITE setIconSpacing NOTIFY iconSpacingChanged)
+    Q_PROPERTY(int verticalPadding READ verticalPadding WRITE setVerticalPadding NOTIFY verticalPaddingChanged)
+    Q_PROPERTY(int horizontalPadding READ horizontalPadding WRITE setHorizontalPadding NOTIFY horizontalPaddingChanged)
     Q_PROPERTY(int dockHeight READ dockHeight WRITE setDockHeight NOTIFY dockHeightChanged)
     Q_PROPERTY(int bottomMargin READ bottomMargin WRITE setBottomMargin NOTIFY bottomMarginChanged)
     Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY cornerRadiusChanged)
+    Q_PROPERTY(qreal iconCornerRadiusRatio READ iconCornerRadiusRatio WRITE setIconCornerRadiusRatio NOTIFY iconCornerRadiusRatioChanged)
     Q_PROPERTY(qreal magnificationFactor READ magnificationFactor WRITE setMagnificationFactor NOTIFY magnificationFactorChanged)
     Q_PROPERTY(qreal magnificationRange READ magnificationRange WRITE setMagnificationRange NOTIFY magnificationRangeChanged)
     Q_PROPERTY(qreal backgroundOpacity READ backgroundOpacity WRITE setBackgroundOpacity NOTIFY backgroundOpacityChanged)
     Q_PROPERTY(QString backgroundTint READ backgroundTint WRITE setBackgroundTint NOTIFY backgroundTintChanged)
+    Q_PROPERTY(qreal borderOpacity READ borderOpacity WRITE setBorderOpacity NOTIFY borderOpacityChanged)
     Q_PROPERTY(bool autoHide READ autoHide WRITE setAutoHide NOTIFY autoHideChanged)
     Q_PROPERTY(int autoHideDelay READ autoHideDelay WRITE setAutoHideDelay NOTIFY autoHideDelayChanged)
     Q_PROPERTY(bool showRunningIndicators READ showRunningIndicators WRITE setShowRunningIndicators NOTIFY showRunningIndicatorsChanged)
@@ -31,6 +35,12 @@ public:
     int iconSpacing() const { return m_iconSpacing; }
     void setIconSpacing(int spacing);
 
+    int verticalPadding() const { return m_verticalPadding; }
+    void setVerticalPadding(int padding);
+
+    int horizontalPadding() const { return m_horizontalPadding; }
+    void setHorizontalPadding(int padding);
+
     int dockHeight() const { return m_dockHeight; }
     void setDockHeight(int height);
 
@@ -39,6 +49,9 @@ public:
 
     int cornerRadius() const { return m_cornerRadius; }
     void setCornerRadius(int radius);
+
+    qreal iconCornerRadiusRatio() const { return m_iconCornerRadiusRatio; }
+    void setIconCornerRadiusRatio(qreal ratio);
 
     qreal magnificationFactor() const { return m_magnificationFactor; }
     void setMagnificationFactor(qreal factor);
@@ -51,6 +64,9 @@ public:
 
     QString backgroundTint() const { return m_backgroundTint; }
     void setBackgroundTint(const QString &tint);
+
+    qreal borderOpacity() const { return m_borderOpacity; }
+    void setBorderOpacity(qreal opacity);
 
     bool autoHide() const { return m_autoHide; }
     void setAutoHide(bool autoHide);
@@ -74,13 +90,17 @@ public:
 signals:
     void iconSizeChanged(int size);
     void iconSpacingChanged(int spacing);
+    void verticalPaddingChanged(int padding);
+    void horizontalPaddingChanged(int padding);
     void dockHeightChanged(int height);
     void bottomMarginChanged(int margin);
     void cornerRadiusChanged(int radius);
+    void iconCornerRadiusRatioChanged(qreal ratio);
     void magnificationFactorChanged(qreal factor);
     void magnificationRangeChanged(qreal range);
     void backgroundOpacityChanged(qreal opacity);
     void backgroundTintChanged(const QString &tint);
+    void borderOpacityChanged(qreal opacity);
     void autoHideChanged(bool autoHide);
     void autoHideDelayChanged(int delay);
     void showRunningIndicatorsChanged(bool show);
@@ -88,15 +108,21 @@ signals:
     void qpaPlatformChanged(const QString &platform);
 
 private:
-    int m_iconSize{64};
-    int m_iconSpacing{14};
-    int m_dockHeight{92};
-    int m_bottomMargin{11};
-    int m_cornerRadius{28};
-    qreal m_magnificationFactor{1.36};
+    void recalculateDockHeight();
+
+    int m_iconSize{58};
+    int m_iconSpacing{18};
+    int m_verticalPadding{12};
+    int m_horizontalPadding{22};
+    int m_dockHeight{84};
+    int m_bottomMargin{6};
+    int m_cornerRadius{24};
+    qreal m_iconCornerRadiusRatio{0.225};
+    qreal m_magnificationFactor{1.35};
     qreal m_magnificationRange{2.0};
-    qreal m_backgroundOpacity{0.25};
-    QString m_backgroundTint{"#3a526d"};
+    qreal m_backgroundOpacity{0.28};
+    QString m_backgroundTint{"#dbe5f0"};
+    qreal m_borderOpacity{0.32};
     bool m_autoHide{false};
     int m_autoHideDelay{500};
     bool m_showRunningIndicators{true};

@@ -15,20 +15,19 @@ Item {
     signal clicked()
     signal rightClicked(real mouseX, real mouseY)
 
-    // Smooth spring-like interpolation towards target scale
     Behavior on currentScale {
         NumberAnimation {
-            duration: 90
+            duration: 85
             easing.type: Easing.OutQuad
         }
     }
 
-    width: (dockSettings ? dockSettings.iconSize : 64) * currentScale
-    height: (dockSettings ? dockSettings.dockHeight : 92)
-
-    property real baseIconSize: dockSettings ? dockSettings.iconSize : 64
+    property real baseIconSize: dockSettings ? dockSettings.iconSize : 58
     property real scaledIconSize: baseIconSize * currentScale
-    property real baseBottomPadding: (height - baseIconSize) / 2.0
+    property real cornerRadiusRatio: dockSettings ? dockSettings.iconCornerRadiusRatio : 0.225
+
+    width: baseIconSize * currentScale
+    height: baseIconSize
 
     property real bounceOffset: 0.0
 
@@ -39,43 +38,43 @@ Item {
         NumberAnimation {
             target: root
             property: "bounceOffset"
-            to: -26
-            duration: 160
-            easing.type: Easing.OutQuad
-        }
-        NumberAnimation {
-            target: root
-            property: "bounceOffset"
-            to: 0
-            duration: 180
-            easing.type: Easing.InQuad
-        }
-        NumberAnimation {
-            target: root
-            property: "bounceOffset"
-            to: -14
-            duration: 130
-            easing.type: Easing.OutQuad
-        }
-        NumberAnimation {
-            target: root
-            property: "bounceOffset"
-            to: 0
+            to: -24
             duration: 150
-            easing.type: Easing.InQuad
-        }
-        NumberAnimation {
-            target: root
-            property: "bounceOffset"
-            to: -6
-            duration: 90
             easing.type: Easing.OutQuad
         }
         NumberAnimation {
             target: root
             property: "bounceOffset"
             to: 0
-            duration: 110
+            duration: 170
+            easing.type: Easing.InQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            to: -12
+            duration: 120
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            to: 0
+            duration: 140
+            easing.type: Easing.InQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            to: -4
+            duration: 80
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            to: 0
+            duration: 100
             easing.type: Easing.InQuad
         }
     }
@@ -89,39 +88,38 @@ Item {
         }
     }
 
-    // Tooltip above icon
+    // Floating Tooltip above icon
     DockTooltip {
         id: tooltip
-        anchors.horizontalCenter: iconContainer.horizontalCenter
-        anchors.bottom: iconContainer.top
-        anchors.bottomMargin: 14
+        anchors.horizontalCenter: iconTile.horizontalCenter
+        anchors.bottom: iconTile.top
+        anchors.bottomMargin: 10
         text: root.name
         active: root.isDirectlyHovered && bounceOffset === 0
-        z: 100
+        z: 200
     }
 
-    // Icon Container
+    // Icon Tile with squircle drop shadow
     Item {
-        id: iconContainer
+        id: iconTile
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.baseBottomPadding + (root.scaledIconSize - root.baseIconSize) * 0.15
         width: root.scaledIconSize
         height: root.scaledIconSize
         y: root.bounceOffset
 
-        // Subtle drop shadow under icon tile
+        // Subtle tile drop shadow
         Rectangle {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 3
-            width: parent.width * 0.94
-            height: parent.height * 0.94
-            radius: width * 0.22
-            color: "#35000000"
+            anchors.verticalCenterOffset: 2
+            width: parent.width * 0.96
+            height: parent.height * 0.96
+            radius: Math.round(width * root.cornerRadiusRatio)
+            color: "#30000000"
             z: 0
         }
 
-        // Icon Graphic
+        // Native smooth antialiased SVG / Image icon
         Image {
             id: iconImg
             anchors.fill: parent
@@ -136,22 +134,21 @@ Item {
         }
     }
 
-    // Running indicator dot centered beneath the icon
+    // Running indicator dot centered beneath the icon inside bottom padding
     Rectangle {
         id: runningDot
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: Math.max(3, (root.baseBottomPadding - 5) / 2.0)
-        width: 5
-        height: 5
-        radius: 2.5
-        // Reference image shows a dark circular dot under active app
+        anchors.top: parent.bottom
+        anchors.topMargin: 3
+        width: 4.5
+        height: 4.5
+        radius: 2.25
         color: "#182028"
         visible: (dockSettings ? dockSettings.showRunningIndicators : true) && root.isRunning
         opacity: visible ? 1.0 : 0.0
 
         Behavior on opacity {
-            NumberAnimation { duration: 200 }
+            NumberAnimation { duration: 180 }
         }
     }
 }

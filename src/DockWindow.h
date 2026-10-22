@@ -20,6 +20,7 @@ public:
 
     void initialize();
     Q_INVOKABLE void updateDockGeometry(int contentWidth, int contentHeight);
+    Q_INVOKABLE void showContextMenu(int index, const QString &name, const QString &itemId, const QString &execCommand, int screenX = -1, int screenY = -1);
 
 public slots:
     void onScreenGeometryChanged();

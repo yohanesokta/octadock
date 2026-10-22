@@ -1,7 +1,8 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQuickWindow>
 #include <QDir>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QDebug>
 #include "DockSettings.h"
 #include "AppLauncher.h"
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     app.setApplicationName("OctaDock");
     app.setOrganizationName("OctaDock");
     app.setApplicationVersion("1.0.0");
@@ -39,6 +40,10 @@ int main(int argc, char *argv[]) {
     DockWindow window(&settings, &model, &launcher, &platform);
     window.initialize();
     window.show();
+
+    if (app.arguments().contains("--preferences") || app.arguments().contains("--settings")) {
+        QTimer::singleShot(400, &launcher, &AppLauncher::openSettingsRequested);
+    }
 
     return app.exec();
 }

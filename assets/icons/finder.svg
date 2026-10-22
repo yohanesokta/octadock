@@ -8,30 +8,23 @@
       <stop offset="0%" stop-color="#2b82e3"/>
       <stop offset="100%" stop-color="#155db0"/>
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.2"/>
-    </filter>
-    <clipPath id="squircle">
-      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
-    </clipPath>
   </defs>
-  <g clip-path="url(#squircle)">
-    <!-- Right side background (darker blue) -->
-    <rect x="8" y="8" width="112" height="112" fill="url(#bg-grad-right)"/>
-    <!-- Left side background (lighter blue) with nose curve -->
-    <path d="M 8 8 L 64 8 L 64 54 C 64 63 56 65 56 71 C 56 77 64 79 64 88 L 64 120 L 8 120 Z" fill="url(#bg-grad-left)"/>
-    
-    <!-- Eyes -->
-    <ellipse cx="36" cy="46" rx="3.5" ry="4.5" fill="#0c3461"/>
-    <ellipse cx="92" cy="46" rx="3.5" ry="4.5" fill="#082444"/>
-    
-    <!-- Nose line -->
-    <path d="M 64 53 C 64 63 56 65 56 71 C 56 77 64 79 64 88" fill="none" stroke="#092648" stroke-width="2.4" stroke-linecap="round"/>
-    
-    <!-- Mouth curve -->
-    <path d="M 32 86 C 46 104 82 104 96 86" fill="none" stroke="#092648" stroke-width="3.2" stroke-linecap="round"/>
-    
-    <!-- Inner subtle border highlight -->
-    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
-  </g>
+  <!-- Full right background with squircle -->
+  <rect x="0" y="0" width="128" height="128" rx="28" ry="28" fill="url(#bg-grad-right)"/>
+  
+  <!-- Left side with rounded corners -->
+  <path d="M 0 28 A 28 28 0 0 1 28 0 L 64 0 L 64 56 C 64 66 54 68 54 75 C 54 82 64 84 64 96 L 64 128 L 28 128 A 28 28 0 0 1 0 100 Z" fill="url(#bg-grad-left)"/>
+  
+  <!-- Eyes -->
+  <ellipse cx="32" cy="48" rx="4" ry="5.5" fill="#0c3461"/>
+  <ellipse cx="96" cy="48" rx="4" ry="5.5" fill="#082444"/>
+  
+  <!-- Nose line -->
+  <path d="M 64 55 C 64 66 54 68 54 75 C 54 82 64 84 64 96" fill="none" stroke="#092648" stroke-width="2.8" stroke-linecap="round"/>
+  
+  <!-- Mouth curve -->
+  <path d="M 26 94 C 42 116 86 116 102 94" fill="none" stroke="#092648" stroke-width="3.6" stroke-linecap="round"/>
+  
+  <!-- Subtle border highlight -->
+  <rect x="0.5" y="0.5" width="127" height="127" rx="27.5" ry="27.5" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
 </svg>

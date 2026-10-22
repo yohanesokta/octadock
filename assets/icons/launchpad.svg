@@ -2,36 +2,26 @@
   <defs>
     <linearGradient id="lp-bg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#e4e7eb"/>
+      <stop offset="100%" stop-color="#e2e5ea"/>
     </linearGradient>
     <linearGradient id="pill-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#d2d5dc"/>
-      <stop offset="100%" stop-color="#c4c8d0"/>
+      <stop offset="0%" stop-color="#d0d4dc"/>
+      <stop offset="100%" stop-color="#c2c6cf"/>
     </linearGradient>
-    <clipPath id="squircle">
-      <rect x="8" y="8" width="112" height="112" rx="25" ry="25"/>
-    </clipPath>
   </defs>
-  <g clip-path="url(#squircle)">
-    <rect x="8" y="8" width="112" height="112" fill="url(#lp-bg)"/>
-    
-    <!-- Top search pill -->
-    <rect x="28" y="28" width="72" height="18" rx="9" ry="9" fill="url(#pill-grad)"/>
-    <!-- Magnifier icon in pill -->
-    <circle cx="38" cy="37" r="3.5" fill="none" stroke="#6e737e" stroke-width="1.8"/>
-    <line x1="41" y1="40" x2="44.5" y2="43.5" stroke="#6e737e" stroke-width="1.8" stroke-linecap="round"/>
-    
-    <!-- 6 App Grid Dots -->
-    <!-- Top row -->
-    <rect x="31" y="58" width="16" height="16" rx="4.5" fill="#ff9500"/>
-    <rect x="56" y="58" width="16" height="16" rx="4.5" fill="#ff2d55"/>
-    <rect x="81" y="58" width="16" height="16" rx="4.5" fill="#007aff"/>
-    
-    <!-- Bottom row -->
-    <rect x="31" y="82" width="16" height="16" rx="4.5" fill="#af52de"/>
-    <rect x="56" y="82" width="16" height="16" rx="4.5" fill="#5ac8fa"/>
-    <rect x="81" y="82" width="16" height="16" rx="4.5" fill="#34c759"/>
+  <rect x="0" y="0" width="128" height="128" rx="28" ry="28" fill="url(#lp-bg)"/>
+  
+  <rect x="22" y="22" width="84" height="20" rx="10" ry="10" fill="url(#pill-grad)"/>
+  <circle cx="34" cy="32" r="4" fill="none" stroke="#686e7a" stroke-width="2"/>
+  <line x1="37.5" y1="35.5" x2="41.5" y2="39.5" stroke="#686e7a" stroke-width="2" stroke-linecap="round"/>
+  
+  <rect x="24" y="56" width="20" height="20" rx="5.5" fill="#ff9500"/>
+  <rect x="54" y="56" width="20" height="20" rx="5.5" fill="#ff2d55"/>
+  <rect x="84" y="56" width="20" height="20" rx="5.5" fill="#007aff"/>
+  
+  <rect x="24" y="84" width="20" height="20" rx="5.5" fill="#af52de"/>
+  <rect x="54" y="84" width="20" height="20" rx="5.5" fill="#5ac8fa"/>
+  <rect x="84" y="84" width="20" height="20" rx="5.5" fill="#34c759"/>
 
-    <rect x="8.5" y="8.5" width="111" height="111" rx="24.5" ry="24.5" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1"/>
-  </g>
+  <rect x="0.5" y="0.5" width="127" height="127" rx="27.5" ry="27.5" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1"/>
 </svg>

@@ -20,20 +20,32 @@ Item {
     Connections {
         target: appLauncher
         function onOpenSettingsRequested() {
-            settingsDialog.isOpen = true
+            settingsDialog.showSettings()
         }
     }
 
     // Auto-hide sliding offset
-    property bool isHidden: (dockSettings ? dockSettings.autoHide : false) && !dockHoverArea.containsMouse && !settingsDialog.isOpen && !contextMenu.isOpen
+    property bool isHidden: (dockSettings ? dockSettings.autoHide : false) && !dockContainer.mouseInside && !settingsDialog.isOpen
 
     Timer {
         id: hideTimer
         interval: dockSettings ? dockSettings.autoHideDelay : 500
         repeat: false
         onTriggered: {
-            if (dockSettings && dockSettings.autoHide && !dockHoverArea.containsMouse && !settingsDialog.isOpen && !contextMenu.isOpen) {
+            if (dockSettings && dockSettings.autoHide && !dockContainer.mouseInside && !settingsDialog.isOpen) {
                 root.isHidden = true
+            }
+        }
+    }
+
+    Connections {
+        target: dockContainer
+        function onMouseInsideChanged() {
+            if (dockContainer.mouseInside) {
+                hideTimer.stop()
+                root.isHidden = false
+            } else if (dockSettings && dockSettings.autoHide) {
+                hideTimer.restart()
             }
         }
     }
@@ -52,51 +64,11 @@ Item {
 
         DockContainer {
             id: dockContainer
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        MouseArea {
-            id: dockHoverArea
-            anchors.fill: parent
-            hoverEnabled: true
-            propagateComposedEvents: true
-            onEntered: {
-                hideTimer.stop()
-                root.isHidden = false
-            }
-            onExited: {
-                if (dockSettings && dockSettings.autoHide) {
-                    hideTimer.restart()
-                }
-            }
         }
     }
 
-    // Context Menu
-    ContextMenu {
-        id: contextMenu
-        anchors.fill: parent
-        z: 900
-
-        onOpenApp: function(idx) {
-            dockModel.launch(idx)
-        }
-        onRemoveApp: function(idx) {
-            dockModel.removeItem(idx)
-        }
-        onOpenPreferences: {
-            settingsDialog.isOpen = true
-        }
-        onQuitApp: {
-            Qt.quit()
-        }
-    }
-
-    // Preferences Dialog
+    // Preferences Dialog (Floating top-level window)
     SettingsDialog {
         id: settingsDialog
-        anchors.fill: parent
-        z: 1000
     }
 }
