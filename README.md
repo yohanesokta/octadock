@@ -3,6 +3,15 @@
 
 ![image example](./assets/example.png)
 ---
+# Quick Install
+
+Download Latest Version : [OctaDock-x86_64.AppImage](https://github.com/yohanesokta/octadock/releases/download/0.1.0/OctaDock-x86_64.AppImage)
+
+running the executable
+
+```bash
+chmod +x OctaDock-x86_64.AppImage && ./OctaDock-x86_64.AppImage
+```
 
 ## Quick Start
 
