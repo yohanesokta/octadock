@@ -165,7 +165,7 @@ void TaskManager::queryKWinWindows(QList<WindowTaskInfo> &windows) {
                 info.title = "Microsoft Edge";
             } else if (lowerDesk.contains("code") || lowerClass.contains("code") || lowerText.contains("nopilot") || lowerText.contains("code")) {
                 info.appId = "code";
-                info.iconName = "code";
+                info.iconName = "vscode";
                 info.title = "Nopilot";
             } else if (lowerDesk.contains("kitty") || lowerClass.contains("kitty") || lowerText.contains("kitty")) {
                 info.appId = "kitty";
@@ -181,7 +181,7 @@ void TaskManager::queryKWinWindows(QList<WindowTaskInfo> &windows) {
                 info.title = "System Settings";
             } else if (lowerDesk.contains("krunner")) {
                 info.appId = "krunner";
-                info.iconName = "krunner";
+                info.iconName = "view-app-grid";
                 info.title = "Launchpad";
             } else {
                 info.appId = !desktopFile.isEmpty() ? lowerDesk : (!resourceClass.isEmpty() ? lowerClass : extractAppId(cleanText, icon));

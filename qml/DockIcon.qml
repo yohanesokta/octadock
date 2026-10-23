@@ -12,7 +12,7 @@ Item {
     property bool isPinned: true
     property bool isRunning: false
     property real targetScale: 1.0
-    property real currentScale: 1.0
+    property real currentScale: targetScale
     property bool isDirectlyHovered: false
 
     signal clicked()
@@ -134,27 +134,6 @@ Item {
             mipmap: true
             antialiasing: true
             z: 1
-        }
-
-        MouseArea {
-            id: iconMouseArea
-            anchors.fill: parent
-            hoverEnabled: false
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: Qt.PointingHandCursor
-            z: 10
-
-            onClicked: function(mouse) {
-                if (mouse.button === Qt.RightButton) {
-                    if (typeof dockWindow !== "undefined" && dockWindow) {
-                        var pt = iconTile.mapToGlobal(iconTile.width / 2, 0)
-                        dockWindow.showContextMenu(root.itemIndex, root.name, root.itemId, root.execCommand, Math.round(pt.x), Math.round(pt.y))
-                    }
-                } else {
-                    root.clicked()
-                    dockModel.launch(root.itemIndex)
-                }
-            }
         }
     }
 

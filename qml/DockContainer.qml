@@ -75,7 +75,7 @@ Item {
             id: iconsRow
             anchors.centerIn: parent
             spacing: root.iconSpacing
-            z: 2
+            z: 1
 
             Repeater {
                 id: iconRepeater
@@ -91,31 +91,22 @@ Item {
                     windowId: model.windowId
                     isPinned: model.isPinned
                     isRunning: model.isRunning
-
-                    onClicked: {
-                        dockModel.launch(index)
-                    }
-
-                    onRightClicked: function(mx, my) {
-                        if (typeof dockWindow !== "undefined" && dockWindow) {
-                            var pt = iconItem.mapToGlobal(iconItem.width / 2, 0)
-                            dockWindow.showContextMenu(index, model.name, model.itemId, model.execCommand, Math.round(pt.x), Math.round(pt.y))
-                        }
-                    }
                 }
             }
         }
 
-        // Mouse tracking across dock for smooth magnification wave and background interaction
+        // Unified mouse tracking overlay for smooth magnification wave, tooltips, and clicks
         MouseArea {
             id: dockMouseArea
             anchors.fill: parent
             anchors.topMargin: -36 // allow pointer hover slightly above dock
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            z: 1
+            z: 10
 
             property real hoveredDockX: -1
+            property int hoveredItemIndex: -1
+            cursorShape: hoveredItemIndex >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
 
             onPositionChanged: function(mouse) {
                 hoveredDockX = mouse.x
@@ -130,14 +121,38 @@ Item {
 
             onExited: {
                 hoveredDockX = -1
+                hoveredItemIndex = -1
                 resetMagnification()
             }
 
             onClicked: function(mouse) {
-                if (mouse.button === Qt.RightButton) {
+                var hitIndex = -1
+                for (var i = 0; i < iconRepeater.count; ++i) {
+                    var item = iconRepeater.itemAt(i)
+                    if (item) {
+                        var pt = item.mapFromItem(dockMouseArea, mouse.x, mouse.y)
+                        var margin = root.iconSpacing / 2.0
+                        if (pt.x >= -margin && pt.x <= (item.width + margin)) {
+                            hitIndex = i
+                            break
+                        }
+                    }
+                }
+
+                if (hitIndex >= 0) {
+                    var targetItem = iconRepeater.itemAt(hitIndex)
+                    if (mouse.button === Qt.RightButton) {
+                        if (typeof dockWindow !== "undefined" && dockWindow) {
+                            var gPt = targetItem.mapToGlobal(targetItem.width / 2, 0)
+                            dockWindow.showContextMenu(hitIndex, targetItem.name, targetItem.itemId, targetItem.execCommand, Math.round(gPt.x), Math.round(gPt.y))
+                        }
+                    } else if (mouse.button === Qt.LeftButton) {
+                        dockModel.launch(hitIndex)
+                    }
+                } else if (mouse.button === Qt.RightButton) {
                     if (typeof dockWindow !== "undefined" && dockWindow) {
-                        var pt = dockGlass.mapToGlobal(mouse.x, 0)
-                        dockWindow.showContextMenu(-1, "", "", "", Math.round(pt.x), Math.round(pt.y))
+                        var gPt2 = dockGlass.mapToGlobal(mouse.x, 0)
+                        dockWindow.showContextMenu(-1, "", "", "", Math.round(gPt2.x), Math.round(gPt2.y))
                     }
                 }
             }
@@ -153,6 +168,7 @@ Item {
         var maxFactor = dockSettings.magnificationFactor
         var radius = root.baseIconSize * dockSettings.magnificationRange
 
+        var foundIndex = -1
         for (var i = 0; i < iconRepeater.count; ++i) {
             var item = iconRepeater.itemAt(i)
             if (!item) continue
@@ -170,8 +186,13 @@ Item {
             }
 
             var pt = item.mapFromItem(dockMouseArea, mouseX, mouseY)
-            item.isDirectlyHovered = (pt.x >= 0 && pt.x <= item.width && pt.y >= -36 && pt.y <= item.height + 24)
+            var isHovered = (pt.x >= 0 && pt.x <= item.width && pt.y >= -36 && pt.y <= item.height + 24)
+            item.isDirectlyHovered = isHovered
+            if (isHovered) {
+                foundIndex = i
+            }
         }
+        dockMouseArea.hoveredItemIndex = foundIndex
     }
 
     function resetMagnification() {

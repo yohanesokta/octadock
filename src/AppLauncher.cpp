@@ -2,6 +2,8 @@
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QDir>
+#include <QDateTime>
+#include <QHash>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QUrl>
@@ -61,6 +63,14 @@ QString AppLauncher::resolveCommand(const QString &id, const QString &command) {
 }
 
 bool AppLauncher::launch(const QString &id, const QString &command, const QStringList &args) {
+    static QHash<QString, qint64> s_lastLaunchTime;
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    QString key = id + QLatin1Char(':') + command;
+    if (s_lastLaunchTime.contains(key) && (now - s_lastLaunchTime.value(key)) < 800) {
+        return true; // Ignore duplicate/double launch within 800ms
+    }
+    s_lastLaunchTime[key] = now;
+
     if (id == QLatin1String("settings") && command.isEmpty()) {
         emit openSettingsRequested();
         return true;

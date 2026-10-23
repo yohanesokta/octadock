@@ -1,5 +1,6 @@
 #include "DockModel.h"
 #include <QSettings>
+#include <QDateTime>
 #include <QDebug>
 
 DockModel::DockModel(AppLauncher *launcher, TaskManager *taskManager, QObject *parent)
@@ -137,6 +138,15 @@ QHash<int, QByteArray> DockModel::roleNames() const {
 
 void DockModel::launch(int index) {
     if (index < 0 || index >= m_items.size()) return;
+
+    static qint64 lastLaunchTime = 0;
+    static int lastLaunchIndex = -1;
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (index == lastLaunchIndex && (now - lastLaunchTime) < 650) {
+        return; // Debounce rapid clicking to prevent duplicate app launches
+    }
+    lastLaunchTime = now;
+    lastLaunchIndex = index;
 
     DockItem *item = m_items.at(index);
     triggerBounce(index);
@@ -373,10 +383,10 @@ void DockModel::initDefaultItems() {
 
     const DefaultApp defaults[] = {
         {"finder", "Finder", "org.kde.dolphin", "dolphin", false},
-        {"launchpad", "Launchpad", "krunner", "krunner", false},
+        {"launchpad", "Launchpad", "view-app-grid", "krunner", false},
         {"microsoft-edge", "Microsoft Edge", "microsoft-edge", "microsoft-edge", false},
         {"terminal", "Terminal", "kitty", "kitty", false},
-        {"code", "Code", "code", "code", false},
+        {"code", "Code", "vscode", "code", false},
         {"settings", "Settings", "systemsettings", "systemsettings", false}
     };
 
@@ -419,6 +429,13 @@ void DockModel::loadFromSettings() {
         QString name = s.value("name").toString();
         QString icon = s.value("icon").toString();
         QString exec = s.value("exec").toString();
+
+        if (id == "code" && (icon == "code" || icon.isEmpty())) {
+            icon = "vscode";
+        }
+        if (id == "launchpad" && (icon == "krunner" || icon.isEmpty())) {
+            icon = "view-app-grid";
+        }
 
         m_items.append(new DockItem(id, name, icon, exec, {}, false, true, QString(), this));
     }

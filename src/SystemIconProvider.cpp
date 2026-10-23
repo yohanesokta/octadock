@@ -10,12 +10,13 @@ SystemIconProvider::SystemIconProvider()
     // Aliases to resolve macOS dock names and desktop apps to Linux system icon theme names
     m_aliases["finder"] = {"org.kde.dolphin", "system-file-manager", "dolphin", "folder"};
     m_aliases["dolphin"] = {"org.kde.dolphin", "system-file-manager", "dolphin"};
-    m_aliases["launchpad"] = {"krunner", "org.kde.krunner", "start-here-kde", "view-app-grid"};
+    m_aliases["launchpad"] = {"view-app-grid", "krunner", "org.kde.krunner", "start-here-kde"};
     m_aliases["krunner"] = {"krunner", "org.kde.krunner"};
     m_aliases["safari"] = {"safari", "microsoft-edge", "google-chrome", "firefox", "org.mozilla.firefox", "internet-web-browser"};
     m_aliases["microsoft-edge"] = {"microsoft-edge", "microsoft-edge-dev", "microsoft-edge-beta", "internet-web-browser"};
-    m_aliases["code"] = {"code", "com.visualstudio.code", "visual-studio-code", "vscode", "text-editor"};
-    m_aliases["nopilot"] = {"code", "com.visualstudio.code", "visual-studio-code", "vscode"};
+    m_aliases["code"] = {"vscode", "com.visualstudio.code", "visual-studio-code", "code-oss"};
+    m_aliases["nopilot"] = {"vscode", "com.visualstudio.code", "visual-studio-code", "code-oss"};
+    m_aliases["vscode"] = {"vscode", "com.visualstudio.code", "visual-studio-code", "code-oss"};
     m_aliases["kitty"] = {"kitty", "utilities-terminal", "terminal"};
     m_aliases["terminal"] = {"kitty", "org.kde.konsole", "utilities-terminal", "terminal"};
     m_aliases["mail"] = {"kmail", "org.kde.kmail2", "internet-mail", "thunderbird"};
