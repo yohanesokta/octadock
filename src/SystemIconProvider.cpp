@@ -74,8 +74,24 @@ QIcon SystemIconProvider::lookupSystemIcon(const QString &rawId) {
         return QIcon(assetPath);
     }
 
-    // 5. General generic fallback
-    return QIcon::fromTheme("application-x-executable", QIcon(":/assets/icons/finder.svg"));
+    // 5. Check pixmaps directory
+    QStringList pixmapPaths = {
+        QString("/usr/share/pixmaps/%1.png").arg(id),
+        QString("/usr/share/pixmaps/%1.svg").arg(id),
+        QString("/usr/share/pixmaps/%1.xpm").arg(id)
+    };
+    for (const auto &p : pixmapPaths) {
+        if (QFile::exists(p)) {
+            return QIcon(p);
+        }
+    }
+
+    // 6. Generic application fallback (clean app icon instead of Finder face)
+    QIcon generic = QIcon::fromTheme("application-x-executable");
+    if (!generic.isNull()) return generic;
+    generic = QIcon::fromTheme("system-run");
+    if (!generic.isNull()) return generic;
+    return QIcon(":/assets/icons/launchpad.svg");
 }
 
 QPixmap SystemIconProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) {

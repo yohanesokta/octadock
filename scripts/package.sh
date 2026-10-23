@@ -48,6 +48,8 @@ mkdir -p "${APPDIR}/usr/plugins/wayland-graphics-integration-client"
 mkdir -p "${APPDIR}/usr/plugins/wayland-shell-integration"
 mkdir -p "${APPDIR}/usr/plugins/wayland-decoration-client"
 mkdir -p "${APPDIR}/usr/plugins/imageformats"
+mkdir -p "${APPDIR}/usr/plugins/iconengines"
+mkdir -p "${APPDIR}/usr/plugins/platformthemes"
 mkdir -p "${APPDIR}/usr/plugins/tls"
 mkdir -p "${APPDIR}/usr/qml"
 mkdir -p "${APPDIR}/usr/share/applications"
@@ -77,6 +79,7 @@ QT_LIBS=(
     "libQt6OpenGL.so"
     "libQt6DBus.so"
     "libQt6Svg.so"
+    "libQt6SvgWidgets.so"
     "libQt6Widgets.so"
     "libQt6XcbQpa.so"
     "libQt6WaylandClient.so"
@@ -115,6 +118,14 @@ if [ -d "${QT_DIR}/plugins/imageformats" ]; then
     cp -a "${QT_DIR}/plugins/imageformats"/* "${APPDIR}/usr/plugins/imageformats/" 2>/dev/null || true
 fi
 
+if [ -d "${QT_DIR}/plugins/iconengines" ]; then
+    cp -a "${QT_DIR}/plugins/iconengines"/* "${APPDIR}/usr/plugins/iconengines/" 2>/dev/null || true
+fi
+
+if [ -d "${QT_DIR}/plugins/platformthemes" ]; then
+    cp -a "${QT_DIR}/plugins/platformthemes"/* "${APPDIR}/usr/plugins/platformthemes/" 2>/dev/null || true
+fi
+
 if [ -d "${QT_DIR}/plugins/tls" ]; then
     cp -a "${QT_DIR}/plugins/tls"/* "${APPDIR}/usr/plugins/tls/" 2>/dev/null || true
 fi
@@ -142,9 +153,10 @@ APPDIR=$(dirname "$SELF")
 
 export PATH="${APPDIR}/usr/bin:${PATH}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH:-}"
-export QT_PLUGIN_PATH="${APPDIR}/usr/plugins"
+export QT_PLUGIN_PATH="${APPDIR}/usr/plugins:${QT_PLUGIN_PATH:-}"
 export QML2_IMPORT_PATH="${APPDIR}/usr/qml"
 export QT_QPA_PLATFORM_PLUGIN_PATH="${APPDIR}/usr/plugins/platforms"
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
 # If QT_QPA_PLATFORM is unset and running on Wayland with XWayland available,
 # default to xcb for flawless bottom-centered placement and dock window rules.

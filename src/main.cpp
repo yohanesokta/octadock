@@ -23,7 +23,8 @@ static void setupIconTheme() {
         "/usr/local/share/icons",
         "/usr/share/icons",
         "/var/lib/flatpak/exports/share/icons",
-        home + "/.local/share/flatpak/exports/share/icons"
+        home + "/.local/share/flatpak/exports/share/icons",
+        "/var/lib/snapd/desktop/icons"
     };
     for (const QString &p : extraPaths) {
         if (QDir(p).exists() && !searchPaths.contains(p)) {
@@ -32,20 +33,32 @@ static void setupIconTheme() {
     }
     QIcon::setThemeSearchPaths(searchPaths);
 
-    // Detect KDE icon theme from kdeglobals
-    QString themeName = "WhiteSur-dark";
+    // Detect icon theme from KDE or GTK configuration
+    QString themeName = "WhiteSur-light";
     QString kdeGlobalsPath = home + "/.config/kdeglobals";
+    QString gtkSettingsPath = home + "/.config/gtk-3.0/settings.ini";
+    bool detected = false;
+
     if (QFile::exists(kdeGlobalsPath)) {
         QSettings kdeSettings(kdeGlobalsPath, QSettings::IniFormat);
         QString t = kdeSettings.value("Icons/Theme").toString();
         if (!t.isEmpty()) {
             themeName = t;
+            detected = true;
+        }
+    }
+    if (!detected && QFile::exists(gtkSettingsPath)) {
+        QSettings gtkSettings(gtkSettingsPath, QSettings::IniFormat);
+        QString t = gtkSettings.value("Settings/gtk-icon-theme-name").toString();
+        if (!t.isEmpty()) {
+            themeName = t;
+            detected = true;
         }
     }
 
-    if (QIcon::themeName().isEmpty()) {
-        QIcon::setThemeName(themeName);
-    }
+    // Force application to use detected desktop icon theme (e.g. WhiteSur-light/dark)
+    QIcon::setThemeName(themeName);
+    QIcon::setFallbackThemeName(QStringLiteral("hicolor"));
 }
 
 int main(int argc, char *argv[]) {
