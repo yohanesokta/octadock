@@ -339,11 +339,16 @@ void PlatformIntegration::applyX11Properties(QWindow *window) {
         free(dockReply);
     }
 
-    // Set _NET_WM_STATE: always skip taskbar/pager
+    // Set _NET_WM_DESKTOP: 0xFFFFFFFF means on all virtual desktops / workspaces
+    uint32_t allDesktops = 0xFFFFFFFF;
+    setXcbAtomProperty(conn, winId, "_NET_WM_DESKTOP", "CARDINAL", {allDesktops});
+
+    // Set _NET_WM_STATE: skip taskbar, skip pager, and sticky (appears on all workspaces)
     QVector<uint32_t> stateAtoms;
     const char *mandatoryStates[] = {
         "_NET_WM_STATE_SKIP_TASKBAR",
-        "_NET_WM_STATE_SKIP_PAGER"
+        "_NET_WM_STATE_SKIP_PAGER",
+        "_NET_WM_STATE_STICKY"
     };
     for (const char *name : mandatoryStates) {
         xcb_intern_atom_cookie_t c = xcb_intern_atom(conn, 0, strlen(name), name);

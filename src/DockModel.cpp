@@ -151,10 +151,23 @@ void DockModel::launch(int index) {
     DockItem *item = m_items.at(index);
     triggerBounce(index);
 
-    // If item has a running window, activate it like a real task manager!
-    if (item->isRunning() && !item->windowId().isEmpty() && m_taskManager) {
-        m_taskManager->activateWindow(item->windowId());
-        return;
+    // If item has a running window or app is running, activate it like a real task manager!
+    if (m_taskManager) {
+        if (item->isRunning()) {
+            if (!item->windowId().isEmpty()) {
+                m_taskManager->activateWindow(item->windowId());
+            } else {
+                m_taskManager->activateApp(item->id(), item->execCommand());
+            }
+            return; // Never launch a duplicate instance if item is already running!
+        }
+
+        // Safety check: even if isRunning is not updated yet, check if window exists before launching duplicate!
+        if (m_taskManager->activateApp(item->id(), item->execCommand())) {
+            item->setIsRunning(true);
+            emit dataChanged(this->index(index), this->index(index), {IsRunningRole});
+            return;
+        }
     }
 
     if (m_launcher) {

@@ -34,6 +34,7 @@ public:
     QList<WindowTaskInfo> openWindows() const { return m_cachedWindows; }
 
     Q_INVOKABLE void activateWindow(const QString &windowId);
+    Q_INVOKABLE bool activateApp(const QString &appId, const QString &execCommand = QString());
     Q_INVOKABLE void closeWindow(const QString &windowId);
     Q_INVOKABLE void minimizeWindow(const QString &windowId);
 

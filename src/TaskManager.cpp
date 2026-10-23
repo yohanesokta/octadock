@@ -77,7 +77,15 @@ void TaskManager::setupKWinTrackingScript() {
             var out = [];
             for (var i = 0; i < list.length; ++i) {
                 var w = list[i];
-                if (w && w.normalWindow && !w.skipTaskbar) {
+                if (!w) continue;
+                if (w.caption === "OctaDock" || w.resourceClass === "OctaDock" || w.resourceName === "octadock") {
+                    w.onAllDesktops = true;
+                    w.skipTaskbar = true;
+                    w.skipPager = true;
+                    w.keepAbove = true;
+                    continue;
+                }
+                if (w.normalWindow && !w.skipTaskbar) {
                     out.push({
                         id: "0_" + String(w.internalId),
                         caption: String(w.caption),
@@ -94,6 +102,8 @@ void TaskManager::setupKWinTrackingScript() {
         workspace.windowAdded.connect(sendWindows);
         workspace.windowRemoved.connect(sendWindows);
         workspace.windowActivated.connect(sendWindows);
+        workspace.currentDesktopChanged.connect(sendWindows);
+        workspace.desktopsChanged.connect(sendWindows);
         sendWindows();
     )";
     tempFile.write(js.toUtf8());
@@ -393,8 +403,15 @@ void TaskManager::activateWindow(const QString &windowId) {
             QString js = QString(
                 "var list = workspace.windowList();\n"
                 "for (var i = 0; i < list.length; ++i) {\n"
-                "    if (String(list[i].internalId) == '%1') {\n"
-                "        workspace.activeWindow = list[i];\n"
+                "    if (String(list[i].internalId) === '%1') {\n"
+                "        var w = list[i];\n"
+                "        if (w.desktops && w.desktops.length > 0) {\n"
+                "            workspace.currentDesktop = w.desktops[0];\n"
+                "        }\n"
+                "        if (w.minimized) {\n"
+                "            w.minimized = false;\n"
+                "        }\n"
+                "        workspace.activeWindow = w;\n"
                 "        break;\n"
                 "    }\n"
                 "}\n"
@@ -461,6 +478,101 @@ void TaskManager::activateWindow(const QString &windowId) {
         }
         free(reply);
     }
+}
+
+static bool isAppMatch(const QString &targetApp, const QString &targetExec, const WindowTaskInfo &win) {
+    QString lowerApp = win.appId.toLower();
+    QString lowerIcon = win.iconName.toLower();
+    QString lowerTitle = win.title.toLower();
+
+    if (targetApp.contains("kitty") || targetExec.contains("kitty") || targetApp.contains("terminal")) {
+        return lowerApp.contains("kitty") || lowerIcon.contains("kitty") || lowerTitle.contains("kitty");
+    } else if (targetApp.contains("code") || targetExec.contains("code") || targetApp.contains("nopilot")) {
+        return lowerApp.contains("code") || lowerIcon.contains("vscode") || lowerTitle.contains("nopilot") || lowerTitle.contains("code");
+    } else if (targetApp.contains("edge") || targetExec.contains("edge")) {
+        return lowerApp.contains("edge") || lowerIcon.contains("edge") || lowerTitle.contains("edge");
+    } else if (targetApp.contains("dolphin") || targetExec.contains("dolphin") || targetApp.contains("finder")) {
+        return lowerApp.contains("dolphin") || lowerIcon.contains("dolphin") || lowerTitle.contains("dolphin");
+    }
+    return (lowerApp == targetApp || lowerApp == targetExec);
+}
+
+bool TaskManager::activateApp(const QString &appId, const QString &execCommand) {
+    QString targetApp = appId.toLower();
+    QString targetExec = execCommand.toLower();
+
+    // 1. Search cached windows list first
+    for (const auto &win : m_cachedWindows) {
+        if (isAppMatch(targetApp, targetExec, win)) {
+            activateWindow(win.windowId);
+            return true;
+        }
+    }
+
+    // 2. Query fresh windows directly from KWin
+    QList<WindowTaskInfo> freshWindows;
+    queryKWinWindows(freshWindows);
+    for (const auto &win : freshWindows) {
+        if (isAppMatch(targetApp, targetExec, win)) {
+            activateWindow(win.windowId);
+            return true;
+        }
+    }
+
+    // 3. Fallback: direct KWin window query script
+    QTemporaryFile tempFile;
+    if (tempFile.open()) {
+        QString js = QString(
+            "var list = workspace.windowList();\n"
+            "for (var i = 0; i < list.length; ++i) {\n"
+            "    var w = list[i];\n"
+            "    if (!w) continue;\n"
+            "    var d = String(w.desktopFileName || '').toLowerCase();\n"
+            "    var c = String(w.resourceClass || '').toLowerCase();\n"
+            "    var t = String(w.caption || '').toLowerCase();\n"
+            "    var match = false;\n"
+            "    if ('%1' === 'kitty' || '%2' === 'kitty' || '%1' === 'terminal') {\n"
+            "        match = (d.indexOf('kitty') >= 0 || c.indexOf('kitty') >= 0 || t.indexOf('kitty') >= 0);\n"
+            "    } else if ('%1' === 'code' || '%2' === 'code' || '%1' === 'nopilot') {\n"
+            "        match = (d.indexOf('code') >= 0 || c.indexOf('code') >= 0 || t.indexOf('code') >= 0);\n"
+            "    } else if ('%1' === 'microsoft-edge' || '%2' === 'microsoft-edge') {\n"
+            "        match = (d.indexOf('edge') >= 0 || c.indexOf('edge') >= 0 || t.indexOf('edge') >= 0);\n"
+            "    } else if ('%1' === 'dolphin' || '%2' === 'dolphin' || '%1' === 'finder') {\n"
+            "        match = (d.indexOf('dolphin') >= 0 || c.indexOf('dolphin') >= 0 || t.indexOf('dolphin') >= 0);\n"
+            "    } else {\n"
+            "        match = (d.indexOf('%1') >= 0 || c.indexOf('%1') >= 0 || d.indexOf('%2') >= 0 || c.indexOf('%2') >= 0);\n"
+            "    }\n"
+            "    if (match) {\n"
+            "        if (w.desktops && w.desktops.length > 0) {\n"
+            "            workspace.currentDesktop = w.desktops[0];\n"
+            "        }\n"
+            "        if (w.minimized) {\n"
+            "            w.minimized = false;\n"
+            "        }\n"
+            "        workspace.activeWindow = w;\n"
+            "        break;\n"
+            "    }\n"
+            "}\n"
+        ).arg(targetApp, targetExec);
+        tempFile.write(js.toUtf8());
+        tempFile.flush();
+
+        QString sName = QString("octa_act_app_%1").arg(QDateTime::currentMSecsSinceEpoch());
+        QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+        loadMsg << tempFile.fileName() << sName;
+        QDBusMessage reply = QDBusConnection::sessionBus().call(loadMsg);
+        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+            int sId = reply.arguments().at(0).toInt();
+            QString sPath = QString("/Scripting/Script%1").arg(sId);
+            QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", sPath, "org.kde.kwin.Script", "run");
+            QDBusConnection::sessionBus().call(runMsg);
+
+            QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+            unloadMsg << sName;
+            QDBusConnection::sessionBus().call(unloadMsg);
+        }
+    }
+    return false;
 }
 
 void TaskManager::closeWindow(const QString &windowId) {
