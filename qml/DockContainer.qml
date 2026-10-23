@@ -75,6 +75,7 @@ Item {
             id: iconsRow
             anchors.centerIn: parent
             spacing: root.iconSpacing
+            z: 2
 
             Repeater {
                 id: iconRepeater
@@ -86,6 +87,9 @@ Item {
                     itemId: model.itemId
                     name: model.name
                     iconSource: model.iconSource
+                    execCommand: model.execCommand
+                    windowId: model.windowId
+                    isPinned: model.isPinned
                     isRunning: model.isRunning
 
                     onClicked: {
@@ -102,13 +106,14 @@ Item {
             }
         }
 
-        // Mouse tracking across dock for smooth magnification wave
+        // Mouse tracking across dock for smooth magnification wave and background interaction
         MouseArea {
             id: dockMouseArea
             anchors.fill: parent
             anchors.topMargin: -36 // allow pointer hover slightly above dock
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
+            z: 1
 
             property real hoveredDockX: -1
 
@@ -129,27 +134,7 @@ Item {
             }
 
             onClicked: function(mouse) {
-                var iconFound = false
-                for (var i = 0; i < iconRepeater.count; ++i) {
-                    var item = iconRepeater.itemAt(i)
-                    if (item) {
-                        var pt = item.mapFromItem(dockGlass, mouse.x, mouse.y)
-                        if (pt.x >= 0 && pt.x <= item.width && pt.y >= 0 && pt.y <= item.height) {
-                            iconFound = true
-                            if (mouse.button === Qt.RightButton) {
-                                if (typeof dockWindow !== "undefined" && dockWindow) {
-                                    var pt = item.mapToGlobal(item.width / 2, 0)
-                                    dockWindow.showContextMenu(i, item.name, item.itemId, "", Math.round(pt.x), Math.round(pt.y))
-                                }
-                            } else {
-                                dockModel.launch(i)
-                            }
-                            break
-                        }
-                    }
-                }
-
-                if (!iconFound && mouse.button === Qt.RightButton) {
+                if (mouse.button === Qt.RightButton) {
                     if (typeof dockWindow !== "undefined" && dockWindow) {
                         var pt = dockGlass.mapToGlobal(mouse.x, 0)
                         dockWindow.showContextMenu(-1, "", "", "", Math.round(pt.x), Math.round(pt.y))
@@ -172,9 +157,9 @@ Item {
             var item = iconRepeater.itemAt(i)
             if (!item) continue
 
-            // Compute icon center X in dockGlass coordinates
-            var itemCenterDockX = item.mapToItem(dockGlass, item.width / 2.0, 0).x
-            var dist = Math.abs(mouseX - itemCenterDockX)
+            // Compute icon center X in dockMouseArea coordinates
+            var itemCenterPt = item.mapToItem(dockMouseArea, item.width / 2.0, 0)
+            var dist = Math.abs(mouseX - itemCenterPt.x)
 
             if (dist < radius) {
                 var normDist = dist / radius
@@ -184,8 +169,8 @@ Item {
                 item.targetScale = 1.0
             }
 
-            var pt = item.mapFromItem(dockGlass, mouseX, mouseY)
-            item.isDirectlyHovered = (pt.x >= 0 && pt.x <= item.width && pt.y >= 0 && pt.y <= item.height)
+            var pt = item.mapFromItem(dockMouseArea, mouseX, mouseY)
+            item.isDirectlyHovered = (pt.x >= 0 && pt.x <= item.width && pt.y >= -36 && pt.y <= item.height + 24)
         }
     }
 

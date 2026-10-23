@@ -193,11 +193,41 @@ void DockModel::addItem(const QString &id, const QString &name, const QString &i
     saveToSettings();
 }
 
+static bool isWindowMatch(const DockItem *item, const WindowTaskInfo &win) {
+    QString id = item->id().toLower();
+    QString exec = item->execCommand().toLower();
+    QString winApp = win.appId.toLower();
+
+    if (id == winApp || exec == winApp) return true;
+    if ((id == "finder" || id == "dolphin") && (winApp == "dolphin" || winApp == "org.kde.dolphin")) return true;
+    if ((id == "terminal" || id == "kitty") && (winApp == "kitty" || winApp == "konsole")) return true;
+    if ((id == "code" || id == "nopilot") && (winApp == "code" || winApp == "visual-studio-code" || winApp == "vscode")) return true;
+    if (id == "microsoft-edge" && (winApp == "microsoft-edge" || winApp == "msedge")) return true;
+    if ((id == "launchpad" || id == "krunner") && winApp == "krunner") return true;
+    if ((id == "settings" || id == "systemsettings") && (winApp == "systemsettings" || winApp == "preferences-system")) return true;
+    if (id == "safari" && (winApp == "firefox" || winApp == "google-chrome")) return true;
+
+    return false;
+}
+
 void DockModel::pinItem(int index) {
     if (index >= 0 && index < m_items.size()) {
         m_items.at(index)->setIsPinned(true);
         emit dataChanged(this->index(index), this->index(index), {IsPinnedRole});
         saveToSettings();
+    }
+}
+
+void DockModel::unpinItem(int index) {
+    if (index < 0 || index >= m_items.size()) return;
+
+    DockItem *item = m_items.at(index);
+    if (item->isRunning() && !item->windowId().isEmpty()) {
+        item->setIsPinned(false);
+        emit dataChanged(this->index(index), this->index(index), {IsPinnedRole});
+        saveToSettings();
+    } else {
+        removeItem(index);
     }
 }
 
@@ -210,22 +240,7 @@ void DockModel::onWindowsChanged(const QList<WindowTaskInfo> &windows) {
         bool found = false;
         QString winId;
         for (const auto &win : windows) {
-            QString exec = item->execCommand().toLower();
-            QString id = item->id().toLower();
-            QString winApp = win.appId.toLower();
-            QString winTitle = win.title.toLower();
-
-            if (exec == winApp || id == winApp ||
-                (id == "finder" && (winApp.contains("dolphin") || winTitle.contains("dolphin"))) ||
-                (id == "safari" && (winApp.contains("firefox") || winApp.contains("edge") || winApp.contains("chrome") || winTitle.contains("firefox") || winTitle.contains("edge"))) ||
-                (id == "launchpad" && winApp.contains("krunner")) ||
-                (id == "mail" && (winApp.contains("kmail") || winApp.contains("thunderbird"))) ||
-                (id == "facetime" && winApp.contains("kamoso")) ||
-                (id == "messages" && winApp.contains("telegram")) ||
-                (id == "photos" && (winApp.contains("gwenview") || winTitle.contains("gwenview"))) ||
-                (id == "contacts" && winApp.contains("kaddressbook")) ||
-                (id == "settings" && winApp.contains("systemsettings")))
-            {
+            if (isWindowMatch(item, win)) {
                 found = true;
                 winId = win.windowId;
                 break;
@@ -252,22 +267,7 @@ void DockModel::onWindowsChanged(const QList<WindowTaskInfo> &windows) {
             DockItem *item = m_items.at(i);
             if (!item->isPinned()) continue;
 
-            QString exec = item->execCommand().toLower();
-            QString id = item->id().toLower();
-            QString winApp = win.appId.toLower();
-            QString winTitle = win.title.toLower();
-
-            if (exec == winApp || id == winApp ||
-                (id == "finder" && (winApp.contains("dolphin") || winTitle.contains("dolphin"))) ||
-                (id == "safari" && (winApp.contains("firefox") || winApp.contains("edge") || winApp.contains("chrome") || winTitle.contains("firefox") || winTitle.contains("edge"))) ||
-                (id == "launchpad" && winApp.contains("krunner")) ||
-                (id == "mail" && (winApp.contains("kmail") || winApp.contains("thunderbird"))) ||
-                (id == "facetime" && winApp.contains("kamoso")) ||
-                (id == "messages" && winApp.contains("telegram")) ||
-                (id == "photos" && (winApp.contains("gwenview") || winTitle.contains("gwenview"))) ||
-                (id == "contacts" && winApp.contains("kaddressbook")) ||
-                (id == "settings" && winApp.contains("systemsettings")))
-            {
+            if (isWindowMatch(item, win)) {
                 matchesPinned = true;
                 break;
             }
@@ -309,15 +309,8 @@ void DockModel::onWindowsChanged(const QList<WindowTaskInfo> &windows) {
         }
         if (!alreadyInDock) {
             beginInsertRows(QModelIndex(), m_items.size(), m_items.size());
-            QString displayName = uw.title.split(QLatin1String(" — ")).last();
-            if (displayName.isEmpty() || displayName.length() > 24) {
-                displayName = uw.appId;
-                if (!displayName.isEmpty()) {
-                    displayName[0] = displayName[0].toUpper();
-                }
-            }
             DockItem *newItem = new DockItem(uw.appId,
-                                             displayName,
+                                             uw.title,
                                              uw.iconName.isEmpty() ? uw.appId : uw.iconName,
                                              uw.appId,
                                              {},
@@ -381,13 +374,10 @@ void DockModel::initDefaultItems() {
     const DefaultApp defaults[] = {
         {"finder", "Finder", "org.kde.dolphin", "dolphin", false},
         {"launchpad", "Launchpad", "krunner", "krunner", false},
-        {"safari", "Safari", "safari", "firefox", false},
-        {"mail", "Mail", "kmail", "kmail", false},
-        {"facetime", "FaceTime", "kamoso", "kamoso", false},
-        {"messages", "Messages", "telegram-desktop", "telegram-desktop", false},
-        {"maps", "Maps", "maps", "marble", false},
-        {"photos", "Photos", "gwenview", "gwenview", false},
-        {"contacts", "Contacts", "contacts", "kaddressbook", false}
+        {"microsoft-edge", "Microsoft Edge", "microsoft-edge", "microsoft-edge", false},
+        {"terminal", "Terminal", "kitty", "kitty", false},
+        {"code", "Code", "code", "code", false},
+        {"settings", "Settings", "systemsettings", "systemsettings", false}
     };
 
     beginResetModel();

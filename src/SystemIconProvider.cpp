@@ -1,15 +1,23 @@
 #include "SystemIconProvider.h"
 #include <QFileInfo>
 #include <QPainter>
+#include <QDir>
 #include <QDebug>
 
 SystemIconProvider::SystemIconProvider()
     : QQuickImageProvider(QQuickImageProvider::Pixmap)
 {
-    // Aliases to resolve macOS dock names to Linux desktop system icon theme names
+    // Aliases to resolve macOS dock names and desktop apps to Linux system icon theme names
     m_aliases["finder"] = {"org.kde.dolphin", "system-file-manager", "dolphin", "folder"};
+    m_aliases["dolphin"] = {"org.kde.dolphin", "system-file-manager", "dolphin"};
     m_aliases["launchpad"] = {"krunner", "org.kde.krunner", "start-here-kde", "view-app-grid"};
-    m_aliases["safari"] = {"safari", "internet-web-browser", "firefox", "org.mozilla.firefox", "microsoft-edge", "google-chrome"};
+    m_aliases["krunner"] = {"krunner", "org.kde.krunner"};
+    m_aliases["safari"] = {"safari", "microsoft-edge", "google-chrome", "firefox", "org.mozilla.firefox", "internet-web-browser"};
+    m_aliases["microsoft-edge"] = {"microsoft-edge", "microsoft-edge-dev", "microsoft-edge-beta", "internet-web-browser"};
+    m_aliases["code"] = {"code", "com.visualstudio.code", "visual-studio-code", "vscode", "text-editor"};
+    m_aliases["nopilot"] = {"code", "com.visualstudio.code", "visual-studio-code", "vscode"};
+    m_aliases["kitty"] = {"kitty", "utilities-terminal", "terminal"};
+    m_aliases["terminal"] = {"kitty", "org.kde.konsole", "utilities-terminal", "terminal"};
     m_aliases["mail"] = {"kmail", "org.kde.kmail2", "internet-mail", "thunderbird"};
     m_aliases["facetime"] = {"kamoso", "org.kde.kamoso", "camera-web", "cheese"};
     m_aliases["messages"] = {"telegram-desktop", "internet-chat", "messages"};
@@ -17,6 +25,7 @@ SystemIconProvider::SystemIconProvider()
     m_aliases["photos"] = {"photos", "gwenview", "org.kde.gwenview", "image-viewer"};
     m_aliases["contacts"] = {"contacts", "kaddressbook", "org.kde.kaddressbook"};
     m_aliases["settings"] = {"preferences-system", "systemsettings", "org.kde.systemsettings"};
+    m_aliases["systemsettings"] = {"preferences-system", "systemsettings", "org.kde.systemsettings"};
 }
 
 QIcon SystemIconProvider::lookupSystemIcon(const QString &rawId) {

@@ -40,6 +40,7 @@ public:
     Q_INVOKABLE void removeItem(int index);
     Q_INVOKABLE void addItem(const QString &id, const QString &name, const QString &icon, const QString &exec);
     Q_INVOKABLE void pinItem(int index);
+    Q_INVOKABLE void unpinItem(int index);
     Q_INVOKABLE void triggerBounce(int index);
     Q_INVOKABLE void updateRunningStates();
     Q_INVOKABLE void setItemRunning(const QString &id, bool running);

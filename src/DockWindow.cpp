@@ -117,17 +117,23 @@ void DockWindow::checkEdgeTrigger() {
     if (!scr) return;
 
     QRect screenGeo = scr->geometry();
-    bool atBottom = (curPos.y() >= screenGeo.bottom() - 3);
+    // Broad bottom edge trigger: within bottom 4 pixels of the screen
+    bool atBottom = (curPos.y() >= screenGeo.bottom() - 4);
 
     if (atBottom) {
-        int margin = 140;
-        if (curPos.x() >= (x() - margin) && curPos.x() <= (x() + width() + margin)) {
+        int dockLeft = x();
+        int dockRight = x() + width();
+        int screenMid = screenGeo.x() + screenGeo.width() / 2;
+        int triggerMargin = 250;
+
+        if ((curPos.x() >= (dockLeft - triggerMargin) && curPos.x() <= (dockRight + triggerMargin)) ||
+            std::abs(curPos.x() - screenMid) < 380) {
             m_hideDelayTimer.stop();
             setRevealed(true);
         }
     } else if (m_isRevealed) {
         QRect dockGeo = geometry();
-        if (!dockGeo.adjusted(-10, -30, 10, 10).contains(curPos)) {
+        if (!dockGeo.adjusted(-20, -50, 20, 20).contains(curPos)) {
             if (!m_hideDelayTimer.isActive()) {
                 m_hideDelayTimer.start(m_settings->autoHideDelay());
             }
@@ -160,6 +166,7 @@ void DockWindow::onSettingsChanged() {
 }
 
 void DockWindow::showContextMenu(int index, const QString &name, const QString &itemId, const QString &execCommand, int screenX, int screenY) {
+    Q_UNUSED(name);
     Q_UNUSED(itemId);
     Q_UNUSED(execCommand);
 
@@ -196,29 +203,29 @@ void DockWindow::showContextMenu(int index, const QString &name, const QString &
         item = qobject_cast<DockItem*>(m_model->data(m_model->index(index), DockModel::ItemRole).value<QObject*>());
     }
 
-    if (index >= 0 && !name.isEmpty()) {
-        QString actionLabel = (item && item->isRunning()) ? QString("Bring %1 to Front").arg(name) : QString("Open %1").arg(name);
-        QAction *openAction = menu.addAction(actionLabel);
-        connect(openAction, &QAction::triggered, this, [this, index]() {
-            if (m_model) m_model->launch(index);
-        });
+    if (item) {
+        if (item->isRunning()) {
+            QAction *frontAction = menu.addAction(QString("Bring %1 to Front").arg(item->name()));
+            connect(frontAction, &QAction::triggered, this, [this, index]() {
+                if (m_model) m_model->launch(index);
+            });
 
-        if (item && item->isRunning() && !item->windowId().isEmpty() && m_taskManager) {
-            QString winId = item->windowId();
-            QAction *closeAction = menu.addAction("Close Window");
-            connect(closeAction, &QAction::triggered, this, [this, winId]() {
-                if (m_taskManager) m_taskManager->closeWindow(winId);
+            if (!item->windowId().isEmpty() && m_taskManager) {
+                QString winId = item->windowId();
+                QAction *closeAction = menu.addAction("Close Window");
+                connect(closeAction, &QAction::triggered, this, [this, winId]() {
+                    if (m_taskManager) m_taskManager->closeWindow(winId);
+                });
+            }
+        } else {
+            QAction *openAction = menu.addAction(QString("Open %1").arg(item->name()));
+            connect(openAction, &QAction::triggered, this, [this, index]() {
+                if (m_model) m_model->launch(index);
             });
         }
+
         menu.addSeparator();
-    }
 
-    QAction *prefAction = menu.addAction("Dock Preferences...");
-    connect(prefAction, &QAction::triggered, this, [this]() {
-        if (m_launcher) emit m_launcher->openSettingsRequested();
-    });
-
-    if (item) {
         if (!item->isPinned()) {
             QAction *pinAction = menu.addAction("Keep in Dock");
             connect(pinAction, &QAction::triggered, this, [this, index]() {
@@ -227,10 +234,17 @@ void DockWindow::showContextMenu(int index, const QString &name, const QString &
         } else {
             QAction *removeAction = menu.addAction("Remove from Dock");
             connect(removeAction, &QAction::triggered, this, [this, index]() {
-                if (m_model) m_model->removeItem(index);
+                if (m_model) m_model->unpinItem(index);
             });
         }
+
+        menu.addSeparator();
     }
+
+    QAction *prefAction = menu.addAction("Dock Preferences...");
+    connect(prefAction, &QAction::triggered, this, [this]() {
+        if (m_launcher) emit m_launcher->openSettingsRequested();
+    });
 
     menu.addSeparator();
 

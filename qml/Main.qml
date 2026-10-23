@@ -25,18 +25,9 @@ Item {
     }
 
     // Auto-hide state synchronized with DockWindow edge trigger
-    property bool isHidden: (dockSettings ? dockSettings.autoHide : false) && 
-                            (typeof dockWindow !== "undefined" && dockWindow ? !dockWindow.isRevealed : false) && 
-                            !settingsDialog.isOpen
-
-    Connections {
-        target: typeof dockWindow !== "undefined" ? dockWindow : null
-        function onRevealedChanged() {
-            if (typeof dockWindow !== "undefined" && dockWindow) {
-                root.isHidden = (dockSettings ? dockSettings.autoHide : false) && !dockWindow.isRevealed && !settingsDialog.isOpen
-            }
-        }
-    }
+    readonly property bool autoHideActive: dockSettings ? dockSettings.autoHide : false
+    readonly property bool windowRevealed: typeof dockWindow !== "undefined" && dockWindow ? dockWindow.isRevealed : true
+    readonly property bool isHidden: autoHideActive && !windowRevealed && !settingsDialog.isOpen
 
     onIsHiddenChanged: {
         if (typeof platformIntegration !== "undefined" && platformIntegration && typeof dockWindow !== "undefined" && dockWindow) {
@@ -47,7 +38,7 @@ Item {
     Item {
         id: slidingWrapper
         anchors.fill: parent
-        y: root.isHidden ? (dockContainer.dockHeight + 24) : 0
+        y: root.isHidden ? (dockContainer.dockHeight + 30) : 0
 
         Behavior on y {
             NumberAnimation {

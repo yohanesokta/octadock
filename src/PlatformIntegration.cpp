@@ -110,10 +110,11 @@ void PlatformIntegration::updateWindowFlags(QWindow *window) {
         flags |= Qt::WindowStaysOnTopHint;
     }
 
-    if (window->flags() != flags) {
-        window->setFlags(flags);
-        window->show();
+    window->setFlags(flags);
+    if (isX11()) {
+        applyX11Properties(window);
     }
+    window->show();
 }
 
 void PlatformIntegration::repositionWindow(QWindow *window, int dockWidth, int dockHeight) {
@@ -205,14 +206,13 @@ void PlatformIntegration::applyX11Properties(QWindow *window) {
         free(dockReply);
     }
 
-    // Set _NET_WM_STATE to SKIP_TASKBAR, SKIP_PAGER, ABOVE
-    const char *stateNames[] = {
-        "_NET_WM_STATE_SKIP_TASKBAR",
-        "_NET_WM_STATE_SKIP_PAGER",
-        "_NET_WM_STATE_ABOVE"
-    };
+    // Set _NET_WM_STATE: always skip taskbar/pager
     QVector<uint32_t> stateAtoms;
-    for (const char *name : stateNames) {
+    const char *mandatoryStates[] = {
+        "_NET_WM_STATE_SKIP_TASKBAR",
+        "_NET_WM_STATE_SKIP_PAGER"
+    };
+    for (const char *name : mandatoryStates) {
         xcb_intern_atom_cookie_t c = xcb_intern_atom(conn, 0, strlen(name), name);
         xcb_intern_atom_reply_t *r = xcb_intern_atom_reply(conn, c, nullptr);
         if (r) {
@@ -220,6 +220,20 @@ void PlatformIntegration::applyX11Properties(QWindow *window) {
             free(r);
         }
     }
+
+    // Window layering:
+    // If alwaysOnTop is set -> _NET_WM_STATE_ABOVE (dock sits on top of all windows)
+    // If alwaysOnTop is false -> _NET_WM_STATE_BELOW (normal windows sit above the panel)
+    const char *layerAtomName = (m_settings && m_settings->alwaysOnTop())
+                                ? "_NET_WM_STATE_ABOVE"
+                                : "_NET_WM_STATE_BELOW";
+    xcb_intern_atom_cookie_t layerCookie = xcb_intern_atom(conn, 0, strlen(layerAtomName), layerAtomName);
+    xcb_intern_atom_reply_t *layerReply = xcb_intern_atom_reply(conn, layerCookie, nullptr);
+    if (layerReply) {
+        stateAtoms.append(layerReply->atom);
+        free(layerReply);
+    }
+
     if (!stateAtoms.isEmpty()) {
         setXcbAtomProperty(conn, winId, "_NET_WM_STATE", "ATOM", stateAtoms);
     }
