@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(OctaDock VERSION 1.0.0 LANGUAGES CXX)
+project(OctaDock VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -51,9 +51,17 @@ target_link_libraries(octadock PRIVATE
     xcb-shape
 )
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK_LAYER REQUIRED gtk+-3.0 gtk-layer-shell-0)
+
+add_executable(octadock-strut src/octadock-strut.c)
+set_target_properties(octadock-strut PROPERTIES AUTOMOC OFF AUTORCC OFF AUTOUIC OFF)
+target_include_directories(octadock-strut PRIVATE ${GTK_LAYER_INCLUDE_DIRS})
+target_link_libraries(octadock-strut PRIVATE ${GTK_LAYER_LIBRARIES})
+
 qt_finalize_executable(octadock)
 
-install(TARGETS octadock
+install(TARGETS octadock octadock-strut
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
 )

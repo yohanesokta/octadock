@@ -55,6 +55,13 @@ mkdir -p "${APPDIR}/usr/share/icons/hicolor/scalable/apps"
 
 # 3. Copy application binary
 cp -a "${BIN}" "${APPDIR}/usr/bin/octadock"
+STRUT_BIN="${PROJECT_ROOT}/build/octadock-strut"
+if [ -f "${STRUT_BIN}" ]; then
+    cp -a "${STRUT_BIN}" "${APPDIR}/usr/bin/octadock-strut"
+fi
+
+# Bundle gtk-layer-shell library
+find /usr/lib/x86_64-linux-gnu -name "libgtk-layer-shell.so*" -exec cp -a {} "${APPDIR}/usr/lib/" \; 2>/dev/null || true
 
 # 4. Copy Qt libraries
 echo "Bundling Qt shared libraries..."

@@ -17,6 +17,7 @@ class PlatformIntegration : public QObject {
 
 public:
     explicit PlatformIntegration(DockSettings *settings, QObject *parent = nullptr);
+    ~PlatformIntegration() override;
 
     int screenWidth() const;
     int screenHeight() const;
@@ -46,4 +47,5 @@ private:
 
     DockSettings *m_settings{nullptr};
     QScreen *m_currentScreen{nullptr};
+    class QProcess *m_strutProcess{nullptr};
 };

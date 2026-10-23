@@ -1,5 +1,8 @@
 #include "PlatformIntegration.h"
 #include <QGuiApplication>
+#include <QCoreApplication>
+#include <QStandardPaths>
+#include <QFile>
 #include <QDebug>
 #include <QProcess>
 #include <QtGui/qguiapplication_platform.h>
@@ -47,6 +50,15 @@ PlatformIntegration::PlatformIntegration(DockSettings *settings, QObject *parent
     m_currentScreen = QGuiApplication::primaryScreen();
     if (m_currentScreen) {
         connect(m_currentScreen, &QScreen::geometryChanged, this, &PlatformIntegration::onScreenGeometryChanged);
+    }
+}
+
+PlatformIntegration::~PlatformIntegration() {
+    if (m_strutProcess) {
+        m_strutProcess->kill();
+        m_strutProcess->waitForFinished(200);
+        delete m_strutProcess;
+        m_strutProcess = nullptr;
     }
 }
 
@@ -216,6 +228,53 @@ void PlatformIntegration::setWindowBlur(QWindow *window, int dockWidth, int dock
 }
 
 void PlatformIntegration::updateStrut(QWindow *window) {
+    bool isAutoHide = m_settings && m_settings->autoHide();
+    int glassHeight = m_settings ? m_settings->dockHeight() : 71;
+    int margin = m_settings ? m_settings->bottomMargin() : 5;
+    uint32_t reservedBottom = isAutoHide ? 0 : static_cast<uint32_t>(glassHeight + margin + 6);
+
+    // 1. Wayland layer-shell strut helper: works on KWin Wayland for all native Wayland & XWayland windows
+    const QString sessionType = qEnvironmentVariable("XDG_SESSION_TYPE");
+    bool runningWayland = sessionType.contains("wayland", Qt::CaseInsensitive) || isWayland();
+    if (runningWayland) {
+        if (isAutoHide || reservedBottom == 0) {
+            if (m_strutProcess) {
+                m_strutProcess->kill();
+                m_strutProcess->waitForFinished(200);
+                delete m_strutProcess;
+                m_strutProcess = nullptr;
+            }
+        } else {
+            static uint32_t currentZone = 0;
+            if (!m_strutProcess || m_strutProcess->state() != QProcess::Running || currentZone != reservedBottom) {
+                if (m_strutProcess) {
+                    m_strutProcess->kill();
+                    m_strutProcess->waitForFinished(200);
+                    delete m_strutProcess;
+                    m_strutProcess = nullptr;
+                }
+                m_strutProcess = new QProcess(this);
+                QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+                env.insert("GDK_BACKEND", "wayland");
+                m_strutProcess->setProcessEnvironment(env);
+
+                QString appDir = QCoreApplication::applicationDirPath();
+                QString strutBin = appDir + "/octadock-strut";
+                if (!QFile::exists(strutBin)) {
+                    strutBin = QStandardPaths::findExecutable("octadock-strut");
+                }
+                if (!QFile::exists(strutBin)) {
+                    strutBin = "/home/yohanesokta/Documents/Code/Ocshell/build/octadock-strut";
+                }
+                if (QFile::exists(strutBin)) {
+                    m_strutProcess->start(strutBin, {QString::number(reservedBottom)});
+                    currentZone = reservedBottom;
+                }
+            }
+        }
+    }
+
+    // 2. X11 EWMH strut fallback
     if (!window) return;
     WId winId = window->winId();
     if (!winId) return;
@@ -223,19 +282,11 @@ void PlatformIntegration::updateStrut(QWindow *window) {
     xcb_connection_t *conn = getNativeXcbConnection();
     if (!conn) return;
 
-    bool isAutoHide = m_settings && m_settings->autoHide();
-    if (!isAutoHide) {
-        int glassHeight = m_settings ? m_settings->dockHeight() : 71;
-        int margin = m_settings ? m_settings->bottomMargin() : 5;
-        uint32_t reservedBottom = static_cast<uint32_t>(glassHeight + margin + 6);
+    if (!isAutoHide && reservedBottom > 0) {
         int scrW = m_currentScreen ? m_currentScreen->geometry().width() : 1920;
-
-        // _NET_WM_STRUT: [left, right, top, bottom]
         QVector<uint32_t> strutData = {0, 0, 0, reservedBottom};
         setXcbAtomProperty(conn, winId, "_NET_WM_STRUT", "CARDINAL", strutData);
 
-        // _NET_WM_STRUT_PARTIAL: 12 cardinals
-        // [left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x]
         QVector<uint32_t> partialData = {
             0, 0, 0, reservedBottom,
             0, 0, 0, 0,
@@ -243,7 +294,6 @@ void PlatformIntegration::updateStrut(QWindow *window) {
         };
         setXcbAtomProperty(conn, winId, "_NET_WM_STRUT_PARTIAL", "CARDINAL", partialData);
     } else {
-        // Delete strut hints so maximized windows can expand full screen
         const char *strutAtoms[] = {"_NET_WM_STRUT", "_NET_WM_STRUT_PARTIAL"};
         for (const char *atomName : strutAtoms) {
             xcb_intern_atom_cookie_t c = xcb_intern_atom(conn, 0, strlen(atomName), atomName);
