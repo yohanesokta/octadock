@@ -6,6 +6,7 @@
 #include <QDebug>
 #include "DockSettings.h"
 #include "AppLauncher.h"
+#include "TaskManager.h"
 #include "DockModel.h"
 #include "PlatformIntegration.h"
 #include "DockWindow.h"
@@ -34,10 +35,11 @@ int main(int argc, char *argv[]) {
 
     DockSettings settings;
     AppLauncher launcher;
-    DockModel model(&launcher);
+    TaskManager taskManager;
+    DockModel model(&launcher, &taskManager);
     PlatformIntegration platform(&settings);
 
-    DockWindow window(&settings, &model, &launcher, &platform);
+    DockWindow window(&settings, &model, &launcher, &platform, &taskManager);
     window.initialize();
     window.show();
 

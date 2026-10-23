@@ -536,6 +536,38 @@ Window {
                         }
                     }
                 }
+
+                // Toggle 4: Always Stay on Top
+                Row {
+                    width: parent.width
+                    spacing: 10
+                    Text {
+                        width: parent.width - 60
+                        text: "Keep Dock on top of other windows"
+                        color: "#ffffff"
+                        font.pixelSize: 13
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Rectangle {
+                        width: 44
+                        height: 24
+                        radius: 12
+                        color: (dockSettings && dockSettings.alwaysOnTop) ? "#34c759" : Qt.rgba(1, 1, 1, 0.2)
+                        Rectangle {
+                            x: (dockSettings && dockSettings.alwaysOnTop) ? 22 : 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 20
+                            height: 20
+                            radius: 10
+                            color: "#ffffff"
+                            Behavior on x { NumberAnimation { duration: 120 } }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: if (dockSettings) dockSettings.alwaysOnTop = !dockSettings.alwaysOnTop
+                        }
+                    }
+                }
             }
         }
 

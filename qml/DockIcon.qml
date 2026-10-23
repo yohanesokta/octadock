@@ -119,11 +119,11 @@ Item {
             z: 0
         }
 
-        // Native smooth antialiased SVG / Image icon
+        // Native smooth antialiased SVG / System Theme icon
         Image {
             id: iconImg
             anchors.fill: parent
-            source: root.iconSource
+            source: "image://systemicon/" + (root.iconSource.length > 0 ? root.iconSource : root.itemId)
             sourceSize.width: 128
             sourceSize.height: 128
             fillMode: Image.PreserveAspectFit

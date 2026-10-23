@@ -23,6 +23,10 @@ set(OCTADOCK_SOURCES
     src/DockModel.cpp
     src/PlatformIntegration.h
     src/PlatformIntegration.cpp
+    src/SystemIconProvider.h
+    src/SystemIconProvider.cpp
+    src/TaskManager.h
+    src/TaskManager.cpp
     src/DockWindow.h
     src/DockWindow.cpp
     resources.qrc

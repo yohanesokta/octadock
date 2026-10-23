@@ -22,6 +22,7 @@ class DockSettings : public QObject {
     Q_PROPERTY(qreal borderOpacity READ borderOpacity WRITE setBorderOpacity NOTIFY borderOpacityChanged)
     Q_PROPERTY(bool autoHide READ autoHide WRITE setAutoHide NOTIFY autoHideChanged)
     Q_PROPERTY(int autoHideDelay READ autoHideDelay WRITE setAutoHideDelay NOTIFY autoHideDelayChanged)
+    Q_PROPERTY(bool alwaysOnTop READ alwaysOnTop WRITE setAlwaysOnTop NOTIFY alwaysOnTopChanged)
     Q_PROPERTY(bool showRunningIndicators READ showRunningIndicators WRITE setShowRunningIndicators NOTIFY showRunningIndicatorsChanged)
     Q_PROPERTY(bool enableMagnification READ enableMagnification WRITE setEnableMagnification NOTIFY enableMagnificationChanged)
     Q_PROPERTY(QString qpaPlatform READ qpaPlatform WRITE setQpaPlatform NOTIFY qpaPlatformChanged)
@@ -74,6 +75,9 @@ public:
     int autoHideDelay() const { return m_autoHideDelay; }
     void setAutoHideDelay(int delay);
 
+    bool alwaysOnTop() const { return m_alwaysOnTop; }
+    void setAlwaysOnTop(bool onTop);
+
     bool showRunningIndicators() const { return m_showRunningIndicators; }
     void setShowRunningIndicators(bool show);
 
@@ -103,6 +107,7 @@ signals:
     void borderOpacityChanged(qreal opacity);
     void autoHideChanged(bool autoHide);
     void autoHideDelayChanged(int delay);
+    void alwaysOnTopChanged(bool onTop);
     void showRunningIndicatorsChanged(bool show);
     void enableMagnificationChanged(bool enable);
     void qpaPlatformChanged(const QString &platform);
@@ -125,6 +130,7 @@ private:
     qreal m_borderOpacity{0.32};
     bool m_autoHide{false};
     int m_autoHideDelay{500};
+    bool m_alwaysOnTop{false};
     bool m_showRunningIndicators{true};
     bool m_enableMagnification{true};
     QString m_qpaPlatform{"xcb"};

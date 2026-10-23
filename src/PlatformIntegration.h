@@ -27,6 +27,7 @@ public:
     bool isKDE() const;
 
     Q_INVOKABLE void setupWindow(QWindow *window);
+    Q_INVOKABLE void updateWindowFlags(QWindow *window);
     Q_INVOKABLE void repositionWindow(QWindow *window, int dockWidth, int dockHeight);
     Q_INVOKABLE void setWindowBlur(QWindow *window, bool enable);
 

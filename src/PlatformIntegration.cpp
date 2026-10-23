@@ -86,8 +86,10 @@ bool PlatformIntegration::isKDE() const {
 void PlatformIntegration::setupWindow(QWindow *window) {
     if (!window) return;
 
-    // Use frameless stay-on-top window without Qt::Tool to avoid transient-for nesting
-    Qt::WindowFlags flags = Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint;
+    Qt::WindowFlags flags = Qt::FramelessWindowHint;
+    if (m_settings && (m_settings->alwaysOnTop() || m_settings->autoHide())) {
+        flags |= Qt::WindowStaysOnTopHint;
+    }
     window->setFlags(flags);
 
     if (isX11()) {
@@ -97,6 +99,21 @@ void PlatformIntegration::setupWindow(QWindow *window) {
     }
 
     setWindowBlur(window, true);
+}
+
+void PlatformIntegration::updateWindowFlags(QWindow *window) {
+    if (!window) return;
+
+    bool shouldStayOnTop = m_settings && (m_settings->alwaysOnTop() || m_settings->autoHide());
+    Qt::WindowFlags flags = Qt::FramelessWindowHint;
+    if (shouldStayOnTop) {
+        flags |= Qt::WindowStaysOnTopHint;
+    }
+
+    if (window->flags() != flags) {
+        window->setFlags(flags);
+        window->show();
+    }
 }
 
 void PlatformIntegration::repositionWindow(QWindow *window, int dockWidth, int dockHeight) {

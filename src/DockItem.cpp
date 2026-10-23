@@ -11,6 +11,8 @@ DockItem::DockItem(const QString &id,
                    const QString &execCommand,
                    const QStringList &execArgs,
                    bool isRunning,
+                   bool isPinned,
+                   const QString &windowId,
                    QObject *parent)
     : QObject(parent)
     , m_id(id)
@@ -19,6 +21,8 @@ DockItem::DockItem(const QString &id,
     , m_execCommand(execCommand)
     , m_execArgs(execArgs)
     , m_isRunning(isRunning)
+    , m_isPinned(isPinned)
+    , m_windowId(windowId)
 {
 }
 
@@ -68,6 +72,20 @@ void DockItem::setBouncing(bool bouncing) {
     if (m_bouncing != bouncing) {
         m_bouncing = bouncing;
         emit bouncingChanged(m_bouncing);
+    }
+}
+
+void DockItem::setWindowId(const QString &winId) {
+    if (m_windowId != winId) {
+        m_windowId = winId;
+        emit windowIdChanged(m_windowId);
+    }
+}
+
+void DockItem::setIsPinned(bool pinned) {
+    if (m_isPinned != pinned) {
+        m_isPinned = pinned;
+        emit isPinnedChanged(m_isPinned);
     }
 }
 

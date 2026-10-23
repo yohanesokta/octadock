@@ -5,6 +5,7 @@
 #include <QTimer>
 #include "DockItem.h"
 #include "AppLauncher.h"
+#include "TaskManager.h"
 
 class DockModel : public QAbstractListModel {
     Q_OBJECT
@@ -18,11 +19,13 @@ public:
         ExecRole,
         IsRunningRole,
         BouncingRole,
-        ItemRole
+        ItemRole,
+        WindowIdRole,
+        IsPinnedRole
     };
     Q_ENUM(DockRoles)
 
-    explicit DockModel(AppLauncher *launcher, QObject *parent = nullptr);
+    explicit DockModel(AppLauncher *launcher, TaskManager *taskManager = nullptr, QObject *parent = nullptr);
     ~DockModel() override;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -36,6 +39,7 @@ public:
     Q_INVOKABLE void launchItem(const QString &id);
     Q_INVOKABLE void removeItem(int index);
     Q_INVOKABLE void addItem(const QString &id, const QString &name, const QString &icon, const QString &exec);
+    Q_INVOKABLE void pinItem(int index);
     Q_INVOKABLE void triggerBounce(int index);
     Q_INVOKABLE void updateRunningStates();
     Q_INVOKABLE void setItemRunning(const QString &id, bool running);
@@ -43,6 +47,9 @@ public:
 signals:
     void countChanged(int count);
     void bounceTriggered(int index);
+
+public slots:
+    void onWindowsChanged(const QList<WindowTaskInfo> &windows);
 
 private slots:
     void onAppLaunched(const QString &id, qint64 pid);
@@ -55,5 +62,6 @@ private:
 
     QList<DockItem*> m_items;
     AppLauncher *m_launcher{nullptr};
+    TaskManager *m_taskManager{nullptr};
     QTimer m_checkTimer;
 };

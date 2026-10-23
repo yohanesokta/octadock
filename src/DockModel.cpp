@@ -2,20 +2,25 @@
 #include <QSettings>
 #include <QDebug>
 
-DockModel::DockModel(AppLauncher *launcher, QObject *parent)
+DockModel::DockModel(AppLauncher *launcher, TaskManager *taskManager, QObject *parent)
     : QAbstractListModel(parent)
     , m_launcher(launcher)
+    , m_taskManager(taskManager)
 {
     if (m_launcher) {
         connect(m_launcher, &AppLauncher::appLaunched, this, &DockModel::onAppLaunched);
         connect(m_launcher, &AppLauncher::appLaunchFailed, this, &DockModel::onAppLaunchFailed);
     }
 
+    if (m_taskManager) {
+        connect(m_taskManager, &TaskManager::windowsChanged, this, &DockModel::onWindowsChanged);
+    }
+
     loadFromSettings();
 
     // Timer to update running states of docked applications
     connect(&m_checkTimer, &QTimer::timeout, this, &DockModel::updateRunningStates);
-    m_checkTimer.start(2500);
+    m_checkTimer.start(2000);
 }
 
 DockModel::~DockModel() {
@@ -49,6 +54,10 @@ QVariant DockModel::data(const QModelIndex &index, int role) const {
         return item->bouncing();
     case ItemRole:
         return QVariant::fromValue(item);
+    case WindowIdRole:
+        return item->windowId();
+    case IsPinnedRole:
+        return item->isPinned();
     default:
         return QVariant();
     }
@@ -91,6 +100,18 @@ bool DockModel::setData(const QModelIndex &index, const QVariant &value, int rol
             changed = true;
         }
         break;
+    case WindowIdRole:
+        if (item->windowId() != value.toString()) {
+            item->setWindowId(value.toString());
+            changed = true;
+        }
+        break;
+    case IsPinnedRole:
+        if (item->isPinned() != value.toBool()) {
+            item->setIsPinned(value.toBool());
+            changed = true;
+        }
+        break;
     }
 
     if (changed) {
@@ -109,6 +130,8 @@ QHash<int, QByteArray> DockModel::roleNames() const {
     roles[IsRunningRole] = "isRunning";
     roles[BouncingRole] = "isBouncing";
     roles[ItemRole] = "dockItem";
+    roles[WindowIdRole] = "windowId";
+    roles[IsPinnedRole] = "isPinned";
     return roles;
 }
 
@@ -117,6 +140,12 @@ void DockModel::launch(int index) {
 
     DockItem *item = m_items.at(index);
     triggerBounce(index);
+
+    // If item has a running window, activate it like a real task manager!
+    if (item->isRunning() && !item->windowId().isEmpty() && m_taskManager) {
+        m_taskManager->activateWindow(item->windowId());
+        return;
+    }
 
     if (m_launcher) {
         m_launcher->launch(item->id(), item->execCommand(), item->execArgs());
@@ -156,7 +185,7 @@ void DockModel::removeItem(int index) {
 
 void DockModel::addItem(const QString &id, const QString &name, const QString &icon, const QString &exec) {
     beginInsertRows(QModelIndex(), m_items.size(), m_items.size());
-    DockItem *item = new DockItem(id, name, icon, exec, {}, false, this);
+    DockItem *item = new DockItem(id, name, icon, exec, {}, false, true, QString(), this);
     m_items.append(item);
     endInsertRows();
 
@@ -164,7 +193,151 @@ void DockModel::addItem(const QString &id, const QString &name, const QString &i
     saveToSettings();
 }
 
+void DockModel::pinItem(int index) {
+    if (index >= 0 && index < m_items.size()) {
+        m_items.at(index)->setIsPinned(true);
+        emit dataChanged(this->index(index), this->index(index), {IsPinnedRole});
+        saveToSettings();
+    }
+}
+
+void DockModel::onWindowsChanged(const QList<WindowTaskInfo> &windows) {
+    // 1. Update running states and active window IDs for pinned items
+    for (int i = 0; i < m_items.size(); ++i) {
+        DockItem *item = m_items.at(i);
+        if (!item->isPinned()) continue;
+
+        bool found = false;
+        QString winId;
+        for (const auto &win : windows) {
+            QString exec = item->execCommand().toLower();
+            QString id = item->id().toLower();
+            QString winApp = win.appId.toLower();
+            QString winTitle = win.title.toLower();
+
+            if (exec == winApp || id == winApp ||
+                (id == "finder" && (winApp.contains("dolphin") || winTitle.contains("dolphin"))) ||
+                (id == "safari" && (winApp.contains("firefox") || winApp.contains("edge") || winApp.contains("chrome") || winTitle.contains("firefox") || winTitle.contains("edge"))) ||
+                (id == "launchpad" && winApp.contains("krunner")) ||
+                (id == "mail" && (winApp.contains("kmail") || winApp.contains("thunderbird"))) ||
+                (id == "facetime" && winApp.contains("kamoso")) ||
+                (id == "messages" && winApp.contains("telegram")) ||
+                (id == "photos" && (winApp.contains("gwenview") || winTitle.contains("gwenview"))) ||
+                (id == "contacts" && winApp.contains("kaddressbook")) ||
+                (id == "settings" && winApp.contains("systemsettings")))
+            {
+                found = true;
+                winId = win.windowId;
+                break;
+            }
+        }
+
+        // Check fallback process polling if no window match
+        if (!found && m_launcher) {
+            found = m_launcher->isRunning(item->id(), item->execCommand());
+        }
+
+        if (item->isRunning() != found || item->windowId() != winId) {
+            item->setIsRunning(found);
+            item->setWindowId(winId);
+            emit dataChanged(index(i), index(i), {IsRunningRole, WindowIdRole});
+        }
+    }
+
+    // 2. Identify unpinned open windows
+    QList<WindowTaskInfo> unpinnedWindows;
+    for (const auto &win : windows) {
+        bool matchesPinned = false;
+        for (int i = 0; i < m_items.size(); ++i) {
+            DockItem *item = m_items.at(i);
+            if (!item->isPinned()) continue;
+
+            QString exec = item->execCommand().toLower();
+            QString id = item->id().toLower();
+            QString winApp = win.appId.toLower();
+            QString winTitle = win.title.toLower();
+
+            if (exec == winApp || id == winApp ||
+                (id == "finder" && (winApp.contains("dolphin") || winTitle.contains("dolphin"))) ||
+                (id == "safari" && (winApp.contains("firefox") || winApp.contains("edge") || winApp.contains("chrome") || winTitle.contains("firefox") || winTitle.contains("edge"))) ||
+                (id == "launchpad" && winApp.contains("krunner")) ||
+                (id == "mail" && (winApp.contains("kmail") || winApp.contains("thunderbird"))) ||
+                (id == "facetime" && winApp.contains("kamoso")) ||
+                (id == "messages" && winApp.contains("telegram")) ||
+                (id == "photos" && (winApp.contains("gwenview") || winTitle.contains("gwenview"))) ||
+                (id == "contacts" && winApp.contains("kaddressbook")) ||
+                (id == "settings" && winApp.contains("systemsettings")))
+            {
+                matchesPinned = true;
+                break;
+            }
+        }
+        if (!matchesPinned) {
+            unpinnedWindows.append(win);
+        }
+    }
+
+    // 3. Remove unpinned items whose windows were closed
+    for (int i = m_items.size() - 1; i >= 0; --i) {
+        DockItem *item = m_items.at(i);
+        if (!item->isPinned()) {
+            bool stillExists = false;
+            for (const auto &uw : unpinnedWindows) {
+                if (uw.windowId == item->windowId()) {
+                    stillExists = true;
+                    break;
+                }
+            }
+            if (!stillExists) {
+                beginRemoveRows(QModelIndex(), i, i);
+                DockItem *removed = m_items.takeAt(i);
+                delete removed;
+                endRemoveRows();
+                emit countChanged(m_items.size());
+            }
+        }
+    }
+
+    // 4. Add dynamic unpinned items for newly opened windows
+    for (const auto &uw : unpinnedWindows) {
+        bool alreadyInDock = false;
+        for (int i = 0; i < m_items.size(); ++i) {
+            if (m_items.at(i)->windowId() == uw.windowId) {
+                alreadyInDock = true;
+                break;
+            }
+        }
+        if (!alreadyInDock) {
+            beginInsertRows(QModelIndex(), m_items.size(), m_items.size());
+            QString displayName = uw.title.split(QLatin1String(" — ")).last();
+            if (displayName.isEmpty() || displayName.length() > 24) {
+                displayName = uw.appId;
+                if (!displayName.isEmpty()) {
+                    displayName[0] = displayName[0].toUpper();
+                }
+            }
+            DockItem *newItem = new DockItem(uw.appId,
+                                             displayName,
+                                             uw.iconName.isEmpty() ? uw.appId : uw.iconName,
+                                             uw.appId,
+                                             {},
+                                             true,
+                                             false,
+                                             uw.windowId,
+                                             this);
+            m_items.append(newItem);
+            endInsertRows();
+            emit countChanged(m_items.size());
+        }
+    }
+}
+
 void DockModel::updateRunningStates() {
+    if (m_taskManager) {
+        m_taskManager->refreshWindows();
+        return;
+    }
+
     if (!m_launcher) return;
 
     for (int i = 0; i < m_items.size(); ++i) {
@@ -197,16 +370,6 @@ void DockModel::onAppLaunchFailed(const QString &id, const QString &error) {
 }
 
 void DockModel::initDefaultItems() {
-    // Reference application layout matching GEMINI.md:
-    // 1. Finder
-    // 2. Launchpad
-    // 3. Safari
-    // 4. Mail
-    // 5. FaceTime
-    // 6. Messages
-    // 7. Maps
-    // 8. Photos
-    // 9. Contacts
     struct DefaultApp {
         const char *id;
         const char *name;
@@ -216,15 +379,15 @@ void DockModel::initDefaultItems() {
     };
 
     const DefaultApp defaults[] = {
-        {"finder", "Finder", "qrc:/assets/icons/finder.svg", "dolphin", true},
-        {"launchpad", "Launchpad", "qrc:/assets/icons/launchpad.svg", "krunner", false},
-        {"safari", "Safari", "qrc:/assets/icons/safari.svg", "firefox", false},
-        {"mail", "Mail", "qrc:/assets/icons/mail.svg", "kmail", false},
-        {"facetime", "FaceTime", "qrc:/assets/icons/facetime.svg", "kamoso", false},
-        {"messages", "Messages", "qrc:/assets/icons/messages.svg", "telegram-desktop", false},
-        {"maps", "Maps", "qrc:/assets/icons/maps.svg", "marble", false},
-        {"photos", "Photos", "qrc:/assets/icons/photos.svg", "gwenview", false},
-        {"contacts", "Contacts", "qrc:/assets/icons/contacts.svg", "kaddressbook", false}
+        {"finder", "Finder", "org.kde.dolphin", "dolphin", false},
+        {"launchpad", "Launchpad", "krunner", "krunner", false},
+        {"safari", "Safari", "safari", "firefox", false},
+        {"mail", "Mail", "kmail", "kmail", false},
+        {"facetime", "FaceTime", "kamoso", "kamoso", false},
+        {"messages", "Messages", "telegram-desktop", "telegram-desktop", false},
+        {"maps", "Maps", "maps", "marble", false},
+        {"photos", "Photos", "gwenview", "gwenview", false},
+        {"contacts", "Contacts", "contacts", "kaddressbook", false}
     };
 
     beginResetModel();
@@ -238,6 +401,8 @@ void DockModel::initDefaultItems() {
                                     QLatin1String(d.exec),
                                     {},
                                     d.running,
+                                    true,
+                                    QString(),
                                     this));
     }
     endResetModel();
@@ -264,9 +429,8 @@ void DockModel::loadFromSettings() {
         QString name = s.value("name").toString();
         QString icon = s.value("icon").toString();
         QString exec = s.value("exec").toString();
-        bool isRunning = s.value("isRunning", false).toBool();
 
-        m_items.append(new DockItem(id, name, icon, exec, {}, isRunning, this));
+        m_items.append(new DockItem(id, name, icon, exec, {}, false, true, QString(), this));
     }
     s.endArray();
     endResetModel();
@@ -277,15 +441,19 @@ void DockModel::loadFromSettings() {
 
 void DockModel::saveToSettings() {
     QSettings s("OctaDock", "OctaDock");
-    s.beginWriteArray("items", m_items.size());
-    for (int i = 0; i < m_items.size(); ++i) {
+    QList<DockItem*> pinnedItems;
+    for (DockItem *it : m_items) {
+        if (it->isPinned()) pinnedItems.append(it);
+    }
+
+    s.beginWriteArray("items", pinnedItems.size());
+    for (int i = 0; i < pinnedItems.size(); ++i) {
         s.setArrayIndex(i);
-        DockItem *item = m_items.at(i);
+        DockItem *item = pinnedItems.at(i);
         s.setValue("id", item->id());
         s.setValue("name", item->name());
         s.setValue("icon", item->icon());
         s.setValue("exec", item->execCommand());
-        s.setValue("isRunning", item->isRunning());
     }
     s.endArray();
 }

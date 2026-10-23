@@ -117,6 +117,12 @@ Item {
                 updateMagnification(mouse.x, mouse.y)
             }
 
+            onEntered: {
+                if (typeof dockWindow !== "undefined" && dockWindow) {
+                    dockWindow.setRevealed(true)
+                }
+            }
+
             onExited: {
                 hoveredDockX = -1
                 resetMagnification()

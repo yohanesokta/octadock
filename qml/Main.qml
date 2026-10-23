@@ -24,40 +24,34 @@ Item {
         }
     }
 
-    // Auto-hide sliding offset
-    property bool isHidden: (dockSettings ? dockSettings.autoHide : false) && !dockContainer.mouseInside && !settingsDialog.isOpen
+    // Auto-hide state synchronized with DockWindow edge trigger
+    property bool isHidden: (dockSettings ? dockSettings.autoHide : false) && 
+                            (typeof dockWindow !== "undefined" && dockWindow ? !dockWindow.isRevealed : false) && 
+                            !settingsDialog.isOpen
 
-    Timer {
-        id: hideTimer
-        interval: dockSettings ? dockSettings.autoHideDelay : 500
-        repeat: false
-        onTriggered: {
-            if (dockSettings && dockSettings.autoHide && !dockContainer.mouseInside && !settingsDialog.isOpen) {
-                root.isHidden = true
+    Connections {
+        target: typeof dockWindow !== "undefined" ? dockWindow : null
+        function onRevealedChanged() {
+            if (typeof dockWindow !== "undefined" && dockWindow) {
+                root.isHidden = (dockSettings ? dockSettings.autoHide : false) && !dockWindow.isRevealed && !settingsDialog.isOpen
             }
         }
     }
 
-    Connections {
-        target: dockContainer
-        function onMouseInsideChanged() {
-            if (dockContainer.mouseInside) {
-                hideTimer.stop()
-                root.isHidden = false
-            } else if (dockSettings && dockSettings.autoHide) {
-                hideTimer.restart()
-            }
+    onIsHiddenChanged: {
+        if (typeof platformIntegration !== "undefined" && platformIntegration && typeof dockWindow !== "undefined" && dockWindow) {
+            platformIntegration.setWindowBlur(dockWindow, !root.isHidden)
         }
     }
 
     Item {
         id: slidingWrapper
         anchors.fill: parent
-        y: root.isHidden ? (parent.height - 4) : 0
+        y: root.isHidden ? (dockContainer.dockHeight + 24) : 0
 
         Behavior on y {
             NumberAnimation {
-                duration: 250
+                duration: 260
                 easing.type: Easing.OutCubic
             }
         }

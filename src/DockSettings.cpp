@@ -151,6 +151,14 @@ void DockSettings::setAutoHideDelay(int delay) {
     }
 }
 
+void DockSettings::setAlwaysOnTop(bool onTop) {
+    if (m_alwaysOnTop != onTop) {
+        m_alwaysOnTop = onTop;
+        emit alwaysOnTopChanged(m_alwaysOnTop);
+        save();
+    }
+}
+
 void DockSettings::setShowRunningIndicators(bool show) {
     if (m_showRunningIndicators != show) {
         m_showRunningIndicators = show;
@@ -192,6 +200,7 @@ void DockSettings::load() {
     m_borderOpacity = s.value("dock/borderOpacity", 0.32).toReal();
     m_autoHide = s.value("dock/autoHide", false).toBool();
     m_autoHideDelay = s.value("dock/autoHideDelay", 500).toInt();
+    m_alwaysOnTop = s.value("dock/alwaysOnTop", false).toBool();
     m_showRunningIndicators = s.value("dock/showRunningIndicators", true).toBool();
     m_enableMagnification = s.value("dock/enableMagnification", true).toBool();
     m_qpaPlatform = s.value("dock/qpaPlatform", "xcb").toString();
@@ -214,6 +223,7 @@ void DockSettings::save() {
     s.setValue("dock/borderOpacity", m_borderOpacity);
     s.setValue("dock/autoHide", m_autoHide);
     s.setValue("dock/autoHideDelay", m_autoHideDelay);
+    s.setValue("dock/alwaysOnTop", m_alwaysOnTop);
     s.setValue("dock/showRunningIndicators", m_showRunningIndicators);
     s.setValue("dock/enableMagnification", m_enableMagnification);
     s.setValue("dock/qpaPlatform", m_qpaPlatform);
@@ -235,6 +245,7 @@ void DockSettings::resetToDefaults() {
     m_borderOpacity = 0.32;
     m_autoHide = false;
     m_autoHideDelay = 500;
+    m_alwaysOnTop = false;
     m_showRunningIndicators = true;
     m_enableMagnification = true;
     m_qpaPlatform = "xcb";

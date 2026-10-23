@@ -13,6 +13,8 @@ class DockItem : public QObject {
     Q_PROPERTY(QStringList execArgs READ execArgs WRITE setExecArgs NOTIFY execArgsChanged)
     Q_PROPERTY(bool isRunning READ isRunning WRITE setIsRunning NOTIFY isRunningChanged)
     Q_PROPERTY(bool bouncing READ bouncing WRITE setBouncing NOTIFY bouncingChanged)
+    Q_PROPERTY(QString windowId READ windowId WRITE setWindowId NOTIFY windowIdChanged)
+    Q_PROPERTY(bool isPinned READ isPinned WRITE setIsPinned NOTIFY isPinnedChanged)
 
 public:
     explicit DockItem(QObject *parent = nullptr);
@@ -22,6 +24,8 @@ public:
              const QString &execCommand,
              const QStringList &execArgs = QStringList(),
              bool isRunning = false,
+             bool isPinned = true,
+             const QString &windowId = QString(),
              QObject *parent = nullptr);
 
     QString id() const { return m_id; }
@@ -45,6 +49,12 @@ public:
     bool bouncing() const { return m_bouncing; }
     void setBouncing(bool bouncing);
 
+    QString windowId() const { return m_windowId; }
+    void setWindowId(const QString &winId);
+
+    bool isPinned() const { return m_isPinned; }
+    void setIsPinned(bool pinned);
+
 public slots:
     void triggerBounce();
 
@@ -56,6 +66,8 @@ signals:
     void execArgsChanged(const QStringList &execArgs);
     void isRunningChanged(bool isRunning);
     void bouncingChanged(bool bouncing);
+    void windowIdChanged(const QString &windowId);
+    void isPinnedChanged(bool isPinned);
     void bounceRequested();
 
 private:
@@ -66,4 +78,6 @@ private:
     QStringList m_execArgs;
     bool m_isRunning{false};
     bool m_bouncing{false};
+    bool m_isPinned{true};
+    QString m_windowId;
 };
