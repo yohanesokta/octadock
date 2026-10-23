@@ -48,6 +48,7 @@ target_link_libraries(octadock PRIVATE
     Qt6::Widgets
     Qt6::DBus
     xcb
+    xcb-shape
 )
 
 qt_finalize_executable(octadock)

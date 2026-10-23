@@ -3,6 +3,9 @@
 #include <QDBusArgument>
 #include <QTemporaryFile>
 #include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QDebug>
 #include <QtGui/qguiapplication_platform.h>
 #include <xcb/xcb.h>
@@ -47,10 +50,155 @@ static void closeKWinWindow(const QString &uuid) {
 TaskManager::TaskManager(QObject *parent)
     : QObject(parent)
 {
+    // Register DBus service so KWin tracking script can deliver window updates instantly
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    bus.registerService("org.octadock.Dock");
+    bus.registerObject("/TaskManager", "org.octadock.TaskManager", this, QDBusConnection::ExportAllSlots);
+
+    setupKWinTrackingScript();
+
     connect(&m_pollTimer, &QTimer::timeout, this, &TaskManager::refreshWindows);
-    m_pollTimer.start(1000);
+    m_pollTimer.start(2000);
 
     QTimer::singleShot(200, this, &TaskManager::refreshWindows);
+}
+
+TaskManager::~TaskManager() {
+    unloadKWinTrackingScript();
+}
+
+void TaskManager::setupKWinTrackingScript() {
+    QTemporaryFile tempFile;
+    if (!tempFile.open()) return;
+
+    QString js = R"(
+        function sendWindows() {
+            var list = workspace.windowList();
+            var out = [];
+            for (var i = 0; i < list.length; ++i) {
+                var w = list[i];
+                if (w && w.normalWindow && !w.skipTaskbar) {
+                    out.push({
+                        id: "0_" + String(w.internalId),
+                        caption: String(w.caption),
+                        desktopFile: String(w.desktopFileName),
+                        resName: String(w.resourceName),
+                        resClass: String(w.resourceClass),
+                        active: (workspace.activeWindow === w)
+                    });
+                }
+            }
+            callDBus("org.octadock.Dock", "/TaskManager", "org.octadock.TaskManager", "updateWindowsJson", JSON.stringify(out));
+        }
+
+        workspace.windowAdded.connect(sendWindows);
+        workspace.windowRemoved.connect(sendWindows);
+        workspace.windowActivated.connect(sendWindows);
+        sendWindows();
+    )";
+    tempFile.write(js.toUtf8());
+    tempFile.flush();
+
+    m_kwinScriptName = QString("octadock_taskmanager_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+    loadMsg << tempFile.fileName() << m_kwinScriptName;
+    QDBusMessage reply = QDBusConnection::sessionBus().call(loadMsg);
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        m_kwinScriptId = reply.arguments().at(0).toInt();
+        QString scriptPath = QString("/Scripting/Script%1").arg(m_kwinScriptId);
+        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", scriptPath, "org.kde.kwin.Script", "run");
+        QDBusConnection::sessionBus().call(runMsg);
+    }
+}
+
+void TaskManager::unloadKWinTrackingScript() {
+    if (!m_kwinScriptName.isEmpty()) {
+        QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+        unloadMsg << m_kwinScriptName;
+        QDBusConnection::sessionBus().call(unloadMsg);
+        m_kwinScriptName.clear();
+        m_kwinScriptId = -1;
+    }
+}
+
+void TaskManager::updateWindowsJson(const QString &json) {
+    QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+    if (!doc.isArray()) return;
+
+    QJsonArray arr = doc.array();
+    QList<WindowTaskInfo> windows;
+
+    for (const auto &val : arr) {
+        if (!val.isObject()) continue;
+        QJsonObject obj = val.toObject();
+
+        QString id = obj.value("id").toString();
+        QString caption = obj.value("caption").toString();
+        QString desktopFile = obj.value("desktopFile").toString();
+        QString resName = obj.value("resName").toString();
+        QString resClass = obj.value("resClass").toString();
+        bool active = obj.value("active").toBool();
+
+        if (caption.contains("OctaDock", Qt::CaseInsensitive)) continue;
+
+        caption.remove(QChar(0x200B));
+
+        WindowTaskInfo info;
+        info.windowId = id;
+        info.isActive = active;
+
+        QString lowerDesk = desktopFile.toLower();
+        QString lowerClass = resClass.toLower();
+        QString lowerRes = resName.toLower();
+        QString lowerText = caption.toLower();
+
+        if (lowerDesk.contains("edge") || lowerClass.contains("edge") || lowerRes.contains("edge") || lowerText.contains("edge")) {
+            info.appId = "microsoft-edge";
+            info.iconName = "microsoft-edge";
+            info.title = "Microsoft Edge";
+        } else if (lowerDesk.contains("code") || lowerClass.contains("code") || lowerText.contains("nopilot") || lowerText.contains("code")) {
+            info.appId = "code";
+            info.iconName = "vscode";
+            info.title = "Nopilot";
+        } else if (lowerDesk.contains("kitty") || lowerClass.contains("kitty") || lowerRes.contains("kitty") || lowerText.contains("kitty")) {
+            info.appId = "kitty";
+            info.iconName = "kitty";
+            info.title = "Terminal";
+        } else if (lowerDesk.contains("dolphin") || lowerClass.contains("dolphin") || lowerRes.contains("dolphin") || lowerText.contains("dolphin")) {
+            info.appId = "dolphin";
+            info.iconName = "org.kde.dolphin";
+            info.title = "Finder";
+        } else if (lowerDesk.contains("systemsettings") || lowerText.contains("system settings")) {
+            info.appId = "systemsettings";
+            info.iconName = "systemsettings";
+            info.title = "System Settings";
+        } else if (lowerDesk.contains("krunner")) {
+            info.appId = "krunner";
+            info.iconName = "view-app-grid";
+            info.title = "Launchpad";
+        } else {
+            info.appId = !desktopFile.isEmpty() ? lowerDesk : (!resClass.isEmpty() ? lowerClass : extractAppId(caption, QString()));
+            info.iconName = info.appId;
+            if (caption.contains(QLatin1String(" — "))) {
+                info.title = caption.split(QLatin1String(" — ")).last();
+            } else if (caption.contains(QLatin1String(" - "))) {
+                info.title = caption.split(QLatin1String(" - ")).last();
+            } else {
+                info.title = caption;
+            }
+            if (info.title.length() > 22) {
+                info.title = info.appId;
+                if (!info.title.isEmpty()) info.title[0] = info.title[0].toUpper();
+            }
+        }
+
+        windows.append(info);
+    }
+
+    if (windows != m_cachedWindows) {
+        m_cachedWindows = windows;
+        emit windowsChanged(m_cachedWindows);
+    }
 }
 
 QString TaskManager::extractAppId(const QString &title, const QString &iconName) {
@@ -213,6 +361,13 @@ void TaskManager::queryX11Windows(QList<WindowTaskInfo> &windows) {
 }
 
 void TaskManager::refreshWindows() {
+    if (m_kwinScriptId >= 0) {
+        QString scriptPath = QString("/Scripting/Script%1").arg(m_kwinScriptId);
+        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", scriptPath, "org.kde.kwin.Script", "run");
+        QDBusConnection::sessionBus().call(runMsg);
+        return;
+    }
+
     QList<WindowTaskInfo> windows;
     queryKWinWindows(windows);
 
@@ -230,6 +385,40 @@ void TaskManager::activateWindow(const QString &windowId) {
     if (windowId.isEmpty()) return;
 
     if (windowId.startsWith("0_")) {
+        QString uuid = windowId.mid(2);
+
+        // First activate directly via KWin workspace.activeWindow
+        QTemporaryFile tempFile;
+        if (tempFile.open()) {
+            QString js = QString(
+                "var list = workspace.windowList();\n"
+                "for (var i = 0; i < list.length; ++i) {\n"
+                "    if (String(list[i].internalId) == '%1') {\n"
+                "        workspace.activeWindow = list[i];\n"
+                "        break;\n"
+                "    }\n"
+                "}\n"
+            ).arg(uuid);
+            tempFile.write(js.toUtf8());
+            tempFile.flush();
+
+            QString sName = QString("octa_act_%1").arg(QDateTime::currentMSecsSinceEpoch());
+            QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+            loadMsg << tempFile.fileName() << sName;
+            QDBusMessage reply = QDBusConnection::sessionBus().call(loadMsg);
+            if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+                int sId = reply.arguments().at(0).toInt();
+                QString sPath = QString("/Scripting/Script%1").arg(sId);
+                QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", sPath, "org.kde.kwin.Script", "run");
+                QDBusConnection::sessionBus().call(runMsg);
+
+                QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+                unloadMsg << sName;
+                QDBusConnection::sessionBus().call(unloadMsg);
+            }
+        }
+
+        // Runner activation fallback
         QDBusMessage msg = QDBusMessage::createMethodCall(
             "org.kde.KWin",
             "/WindowsRunner",

@@ -8,6 +8,7 @@ Item {
     property real verticalPadding: dockSettings ? dockSettings.verticalPadding : 12
     property real horizontalPadding: dockSettings ? dockSettings.horizontalPadding : 22
     property real dockHeight: dockSettings ? dockSettings.dockHeight : 84
+    property real bottomMargin: dockSettings ? dockSettings.bottomMargin : 6
     property real cornerRadius: dockSettings ? dockSettings.cornerRadius : 24
     property real bgOpacity: dockSettings ? dockSettings.backgroundOpacity : 0.28
     property real borderOpacity: dockSettings ? dockSettings.borderOpacity : 0.32
@@ -17,14 +18,14 @@ Item {
 
     // Total width adapts to icons + horizontal padding
     width: Math.max(120, totalIconsWidth + horizontalPadding * 2)
-    // Headroom for magnified icons expanding upwards
-    height: dockHeight + 36
+    // Headroom for magnified icons expanding upwards + bottom margin
+    height: dockHeight + 36 + bottomMargin
 
     // Floating Glass Capsule Container
     Rectangle {
         id: dockGlass
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 0
+        anchors.bottomMargin: root.bottomMargin
         anchors.horizontalCenter: parent.horizontalCenter
         width: parent.width
         height: root.dockHeight

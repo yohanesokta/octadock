@@ -96,13 +96,15 @@ void DockWindow::setRevealed(bool revealed) {
 
         if (m_platform) {
             if (m_isRevealed) {
-                if (m_settings && m_settings->autoHide()) {
-                    setFlag(Qt::WindowStaysOnTopHint, true);
-                    raise();
-                }
-                m_platform->setWindowBlur(this, true);
+                setFlag(Qt::WindowStaysOnTopHint, true);
+                raise();
+                m_platform->setWindowInputTransparent(this, false);
+                m_platform->setWindowBlur(this, width(), height(), true);
             } else {
-                m_platform->setWindowBlur(this, false);
+                setFlag(Qt::WindowStaysOnTopHint, false);
+                lower();
+                m_platform->setWindowInputTransparent(this, true);
+                m_platform->setWindowBlur(this, width(), height(), false);
             }
         }
     }
@@ -117,25 +119,17 @@ void DockWindow::checkEdgeTrigger() {
     if (!scr) return;
 
     QRect screenGeo = scr->geometry();
-    // Broad bottom edge trigger: within bottom 4 pixels of the screen
-    bool atBottom = (curPos.y() >= screenGeo.bottom() - 4);
+    // Broad bottom edge trigger: within bottom 8 pixels of the screen
+    bool atBottom = (curPos.y() >= screenGeo.bottom() - 8);
 
     if (atBottom) {
-        int dockLeft = x();
-        int dockRight = x() + width();
-        int screenMid = screenGeo.x() + screenGeo.width() / 2;
-        int triggerMargin = 250;
-
-        if ((curPos.x() >= (dockLeft - triggerMargin) && curPos.x() <= (dockRight + triggerMargin)) ||
-            std::abs(curPos.x() - screenMid) < 380) {
-            m_hideDelayTimer.stop();
-            setRevealed(true);
-        }
+        m_hideDelayTimer.stop();
+        setRevealed(true);
     } else if (m_isRevealed) {
         QRect dockGeo = geometry();
         if (!dockGeo.adjusted(-20, -50, 20, 20).contains(curPos)) {
             if (!m_hideDelayTimer.isActive()) {
-                m_hideDelayTimer.start(m_settings->autoHideDelay());
+                m_hideDelayTimer.start(m_settings ? m_settings->autoHideDelay() : 500);
             }
         } else {
             m_hideDelayTimer.stop();

@@ -4,6 +4,7 @@
 #include <QProcess>
 #include <QtGui/qguiapplication_platform.h>
 #include <xcb/xcb.h>
+#include <xcb/shape.h>
 #include <cmath>
 #include <algorithm>
 
@@ -99,6 +100,7 @@ void PlatformIntegration::setupWindow(QWindow *window) {
     }
 
     setWindowBlur(window, true);
+    updateStrut(window);
 }
 
 void PlatformIntegration::updateWindowFlags(QWindow *window) {
@@ -114,6 +116,7 @@ void PlatformIntegration::updateWindowFlags(QWindow *window) {
     if (isX11()) {
         applyX11Properties(window);
     }
+    updateStrut(window);
     window->show();
 }
 
@@ -121,18 +124,25 @@ void PlatformIntegration::repositionWindow(QWindow *window, int dockWidth, int d
     if (!window || !m_currentScreen) return;
 
     QRect screenGeo = m_currentScreen->geometry();
-    int margin = m_settings ? m_settings->bottomMargin() : 6;
 
     int x = screenGeo.x() + (screenGeo.width() - dockWidth) / 2;
-    int y = screenGeo.y() + screenGeo.height() - dockHeight - margin;
+    int y = screenGeo.y() + screenGeo.height() - dockHeight;
 
     window->setGeometry(x, y, dockWidth, dockHeight);
 
-    // Update blur region to match current dock window size
-    setWindowBlur(window, true);
+    // Update blur region using exact dock dimensions to avoid stale geometry artifacts
+    setWindowBlur(window, dockWidth, dockHeight, true);
+
+    // Update strut reservations for maximized windows
+    updateStrut(window);
 }
 
 void PlatformIntegration::setWindowBlur(QWindow *window, bool enable) {
+    if (!window) return;
+    setWindowBlur(window, window->width(), window->height(), enable);
+}
+
+void PlatformIntegration::setWindowBlur(QWindow *window, int dockWidth, int dockHeight, bool enable) {
     if (!window) return;
 
     WId winId = window->winId();
@@ -144,9 +154,10 @@ void PlatformIntegration::setWindowBlur(QWindow *window, bool enable) {
     if (enable) {
         int glassHeight = m_settings ? m_settings->dockHeight() : 84;
         int cornerRadius = m_settings ? m_settings->cornerRadius() : 24;
-        int winW = window->width();
-        int winH = window->height();
-        int yOffset = winH - glassHeight;
+        int margin = m_settings ? m_settings->bottomMargin() : 6;
+        int winW = dockWidth > 0 ? dockWidth : window->width();
+        int winH = dockHeight > 0 ? dockHeight : window->height();
+        int yOffset = winH - glassHeight - margin;
         if (yOffset < 0) yOffset = 0;
         if (cornerRadius > glassHeight / 2) cornerRadius = glassHeight / 2;
 
@@ -177,7 +188,14 @@ void PlatformIntegration::setWindowBlur(QWindow *window, bool enable) {
         }
 
         setXcbAtomProperty(conn, winId, "_KDE_NET_WM_BLUR_BEHIND_REGION", "CARDINAL", rectData);
-        setXcbAtomProperty(conn, winId, "_KDE_NET_WM_BACKGROUND_CONTRAST_REGION", "CARDINAL", rectData);
+
+        // Explicitly DELETE _KDE_NET_WM_BACKGROUND_CONTRAST_REGION to prevent dark shadow glitch
+        xcb_intern_atom_cookie_t contrastCookie = xcb_intern_atom(conn, 0, strlen("_KDE_NET_WM_BACKGROUND_CONTRAST_REGION"), "_KDE_NET_WM_BACKGROUND_CONTRAST_REGION");
+        xcb_intern_atom_reply_t *contrastReply = xcb_intern_atom_reply(conn, contrastCookie, nullptr);
+        if (contrastReply) {
+            xcb_delete_property(conn, winId, contrastReply->atom);
+            free(contrastReply);
+        }
     } else {
         xcb_intern_atom_cookie_t cookie = xcb_intern_atom(conn, 0, strlen("_KDE_NET_WM_BLUR_BEHIND_REGION"), "_KDE_NET_WM_BLUR_BEHIND_REGION");
         xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, nullptr);
@@ -185,8 +203,73 @@ void PlatformIntegration::setWindowBlur(QWindow *window, bool enable) {
             xcb_delete_property(conn, winId, reply->atom);
             free(reply);
         }
+
+        xcb_intern_atom_cookie_t contrastCookie = xcb_intern_atom(conn, 0, strlen("_KDE_NET_WM_BACKGROUND_CONTRAST_REGION"), "_KDE_NET_WM_BACKGROUND_CONTRAST_REGION");
+        xcb_intern_atom_reply_t *contrastReply = xcb_intern_atom_reply(conn, contrastCookie, nullptr);
+        if (contrastReply) {
+            xcb_delete_property(conn, winId, contrastReply->atom);
+            free(contrastReply);
+        }
     }
 
+    xcb_flush(conn);
+}
+
+void PlatformIntegration::updateStrut(QWindow *window) {
+    if (!window) return;
+    WId winId = window->winId();
+    if (!winId) return;
+
+    xcb_connection_t *conn = getNativeXcbConnection();
+    if (!conn) return;
+
+    bool isAutoHide = m_settings && m_settings->autoHide();
+    if (!isAutoHide) {
+        int glassHeight = m_settings ? m_settings->dockHeight() : 71;
+        int margin = m_settings ? m_settings->bottomMargin() : 5;
+        uint32_t reservedBottom = static_cast<uint32_t>(glassHeight + margin + 6);
+        int scrW = m_currentScreen ? m_currentScreen->geometry().width() : 1920;
+
+        // _NET_WM_STRUT: [left, right, top, bottom]
+        QVector<uint32_t> strutData = {0, 0, 0, reservedBottom};
+        setXcbAtomProperty(conn, winId, "_NET_WM_STRUT", "CARDINAL", strutData);
+
+        // _NET_WM_STRUT_PARTIAL: 12 cardinals
+        // [left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x]
+        QVector<uint32_t> partialData = {
+            0, 0, 0, reservedBottom,
+            0, 0, 0, 0,
+            0, 0, 0, static_cast<uint32_t>(scrW > 0 ? scrW - 1 : 1919)
+        };
+        setXcbAtomProperty(conn, winId, "_NET_WM_STRUT_PARTIAL", "CARDINAL", partialData);
+    } else {
+        // Delete strut hints so maximized windows can expand full screen
+        const char *strutAtoms[] = {"_NET_WM_STRUT", "_NET_WM_STRUT_PARTIAL"};
+        for (const char *atomName : strutAtoms) {
+            xcb_intern_atom_cookie_t c = xcb_intern_atom(conn, 0, strlen(atomName), atomName);
+            xcb_intern_atom_reply_t *r = xcb_intern_atom_reply(conn, c, nullptr);
+            if (r) {
+                xcb_delete_property(conn, winId, r->atom);
+                free(r);
+            }
+        }
+    }
+    xcb_flush(conn);
+}
+
+void PlatformIntegration::setWindowInputTransparent(QWindow *window, bool transparent) {
+    if (!window) return;
+    WId winId = window->winId();
+    if (!winId) return;
+
+    xcb_connection_t *conn = getNativeXcbConnection();
+    if (!conn) return;
+
+    if (transparent) {
+        xcb_shape_rectangles(conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT, XCB_CLIP_ORDERING_UNSORTED, winId, 0, 0, 0, nullptr);
+    } else {
+        xcb_shape_mask(conn, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT, winId, 0, 0, XCB_NONE);
+    }
     xcb_flush(conn);
 }
 

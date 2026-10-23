@@ -207,15 +207,17 @@ static bool isWindowMatch(const DockItem *item, const WindowTaskInfo &win) {
     QString id = item->id().toLower();
     QString exec = item->execCommand().toLower();
     QString winApp = win.appId.toLower();
+    QString winIcon = win.iconName.toLower();
+    QString winTitle = win.title.toLower();
 
     if (id == winApp || exec == winApp) return true;
-    if ((id == "finder" || id == "dolphin") && (winApp == "dolphin" || winApp == "org.kde.dolphin")) return true;
-    if ((id == "terminal" || id == "kitty") && (winApp == "kitty" || winApp == "konsole")) return true;
-    if ((id == "code" || id == "nopilot") && (winApp == "code" || winApp == "visual-studio-code" || winApp == "vscode")) return true;
-    if (id == "microsoft-edge" && (winApp == "microsoft-edge" || winApp == "msedge")) return true;
-    if ((id == "launchpad" || id == "krunner") && winApp == "krunner") return true;
-    if ((id == "settings" || id == "systemsettings") && (winApp == "systemsettings" || winApp == "preferences-system")) return true;
-    if (id == "safari" && (winApp == "firefox" || winApp == "google-chrome")) return true;
+    if ((id == "finder" || id == "dolphin" || exec == "dolphin") && (winApp.contains("dolphin") || winIcon.contains("dolphin") || winTitle.contains("dolphin"))) return true;
+    if ((id == "terminal" || id == "kitty" || exec == "kitty") && (winApp.contains("kitty") || winIcon.contains("kitty") || winTitle.contains("kitty") || winApp == "konsole")) return true;
+    if ((id == "code" || id == "nopilot" || exec == "code") && (winApp.contains("code") || winApp == "vscode" || winIcon.contains("vscode") || winIcon.contains("code") || winTitle.contains("nopilot") || winTitle.contains("code"))) return true;
+    if ((id == "microsoft-edge" || exec.contains("edge")) && (winApp.contains("edge") || winIcon.contains("edge") || winTitle.contains("edge"))) return true;
+    if ((id == "launchpad" || id == "krunner") && (winApp == "krunner" || winIcon.contains("grid"))) return true;
+    if ((id == "settings" || id == "systemsettings" || exec.contains("systemsettings")) && (winApp.contains("systemsettings") || winApp.contains("preferences") || winTitle.contains("settings"))) return true;
+    if (id == "safari" && (winApp.contains("firefox") || winApp.contains("chrome"))) return true;
 
     return false;
 }
@@ -412,9 +414,10 @@ void DockModel::initDefaultItems() {
 void DockModel::loadFromSettings() {
     QSettings s("OctaDock", "OctaDock");
     int size = s.beginReadArray("items");
-    if (size == 0) {
+    if (size < 6) {
         s.endArray();
         initDefaultItems();
+        saveToSettings();
         updateRunningStates();
         return;
     }

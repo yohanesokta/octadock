@@ -25,10 +25,11 @@ struct WindowTaskInfo {
 
 class TaskManager : public QObject {
     Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.octadock.TaskManager")
 
 public:
     explicit TaskManager(QObject *parent = nullptr);
-    ~TaskManager() override = default;
+    ~TaskManager() override;
 
     QList<WindowTaskInfo> openWindows() const { return m_cachedWindows; }
 
@@ -41,12 +42,17 @@ signals:
 
 public slots:
     void refreshWindows();
+    Q_SCRIPTABLE void updateWindowsJson(const QString &json);
 
 private:
+    void setupKWinTrackingScript();
+    void unloadKWinTrackingScript();
     void queryKWinWindows(QList<WindowTaskInfo> &windows);
     void queryX11Windows(QList<WindowTaskInfo> &windows);
     QString extractAppId(const QString &title, const QString &iconName);
 
     QTimer m_pollTimer;
     QList<WindowTaskInfo> m_cachedWindows;
+    int m_kwinScriptId{-1};
+    QString m_kwinScriptName;
 };

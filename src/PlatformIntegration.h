@@ -29,7 +29,10 @@ public:
     Q_INVOKABLE void setupWindow(QWindow *window);
     Q_INVOKABLE void updateWindowFlags(QWindow *window);
     Q_INVOKABLE void repositionWindow(QWindow *window, int dockWidth, int dockHeight);
+    Q_INVOKABLE void setWindowBlur(QWindow *window, int dockWidth, int dockHeight, bool enable);
     Q_INVOKABLE void setWindowBlur(QWindow *window, bool enable);
+    Q_INVOKABLE void updateStrut(QWindow *window);
+    Q_INVOKABLE void setWindowInputTransparent(QWindow *window, bool transparent);
 
 signals:
     void screenGeometryChanged();
